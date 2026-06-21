@@ -169,7 +169,8 @@ public class DecompilerTestFixture {
       }
     }
 
-    void close() {
+    @Override
+    public void close() {
       for (ZipFile file : zipFiles.values()) {
         try {
           file.close();

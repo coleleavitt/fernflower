@@ -168,18 +168,61 @@ public final class SwitchHelper {
     if (array.getArray().type == Exprent.EXPRENT_FIELD) { // Javac compiler
       FieldExprent arrayField = (FieldExprent)array.getArray();
       ClassesProcessor.ClassNode classNode = DecompilerContext.getClassProcessor().getMapRootClasses().get(arrayField.getClassname());
-      if (classNode == null) return mapping;
+      if (classNode == null) {
+        DecompilerContext.getLogger()
+          .writeMessage("Enum switch map class not found: " + arrayField.getClassname() + "." + arrayField.getName(), Severity.TRACE);
+        return mapping;
+      }
+      if (classNode.getWrapper() == null) {
+        DecompilerContext.getLogger()
+          .writeMessage("Enum switch map class has no wrapper: " + arrayField.getClassname() + "." + arrayField.getName(), Severity.TRACE);
+        return mapping;
+      }
       MethodWrapper wrapper = classNode.getWrapper().getMethodWrapper(CLINIT_NAME, "()V");
       if (wrapper != null && wrapper.root != null) {
+        Map<Exprent, List<AssignmentExprent>> pendingArrayWrites = new HashMap<>();
+        int[] directCases = {0};
+        int[] aliasedCases = {0};
+        int[] aliases = {0};
+
         wrapper.getOrBuildGraph().iterateExprents(exprent -> {
-          if (exprent instanceof AssignmentExprent assignment) {
-            Exprent left = assignment.getLeft();
-            if (left.type == Exprent.EXPRENT_ARRAY && ((ArrayExprent)left).getArray().equals(arrayField)) {
-              mapping.put(assignment.getRight(), ((InvocationExprent)((ArrayExprent)left).getIndex()).getInstance());
+          if (exprent instanceof AssignmentExprent assignment &&
+              assignment.getLeft().type == Exprent.EXPRENT_ARRAY) {
+            ArrayExprent left = (ArrayExprent)assignment.getLeft();
+            if (left.getArray().equals(arrayField)) {
+              if (mapEnumArrayWrite(mapping, assignment)) {
+                directCases[0]++;
+              }
+            }
+            else {
+              pendingArrayWrites.computeIfAbsent(left.getArray(), k -> new ArrayList<>()).add(assignment);
+            }
+          }
+          else if (exprent instanceof AssignmentExprent assignment &&
+                   assignment.getLeft() instanceof FieldExprent) {
+            List<AssignmentExprent> writes = pendingArrayWrites.remove(assignment.getRight());
+            if (assignment.getLeft().equals(arrayField) && writes != null) {
+              aliases[0]++;
+              for (AssignmentExprent write : writes) {
+                if (mapEnumArrayWrite(mapping, write)) {
+                  aliasedCases[0]++;
+                }
+              }
             }
           }
           return 0;
         });
+
+        DecompilerContext.getLogger()
+          .writeMessage("Enum switch map " + arrayField.getClassname() + "." + arrayField.getName() +
+                        " aliases=" + aliases[0] +
+                        " directCases=" + directCases[0] +
+                        " aliasedCases=" + aliasedCases[0] +
+                        " cases=" + mapping.size(), Severity.TRACE);
+      }
+      else {
+        DecompilerContext.getLogger()
+          .writeMessage("Enum switch map <clinit> not available: " + arrayField.getClassname() + "." + arrayField.getName(), Severity.TRACE);
       }
     }
     else if (array.getArray().type == Exprent.EXPRENT_INVOCATION) { // Eclipse compiler
@@ -206,6 +249,22 @@ public final class SwitchHelper {
     return mapping;
   }
 
+  private static boolean mapEnumArrayWrite(@NotNull Map<Exprent, Exprent> mapping, @NotNull AssignmentExprent assignment) {
+    Exprent left = assignment.getLeft();
+    if (left.type != Exprent.EXPRENT_ARRAY) {
+      return false;
+    }
+
+    ArrayExprent array = (ArrayExprent)left;
+    if (!(array.getIndex() instanceof InvocationExprent invocationExprent) ||
+        !invocationExprent.getName().equals("ordinal")) {
+      return false;
+    }
+
+    mapping.put(assignment.getRight(), invocationExprent.getInstance());
+    return true;
+  }
+
   private static @Nullable List<List<@Nullable Exprent>> findRealCaseValues(@NotNull List<List<Exprent>> caseValues,
                                                                             @NotNull Map<Exprent, Exprent> mapping) {
     List<List<@Nullable Exprent>> result = new ArrayList<>(caseValues.size());
@@ -220,7 +279,7 @@ public final class SwitchHelper {
           Exprent realConst = mapping.get(exprent);
           if (realConst == null) {
             DecompilerContext.getLogger()
-              .writeMessage("Unable to simplify switch on enum: " + exprent + " not found, available: " + mapping, Severity.ERROR);
+              .writeMessage("Unable to simplify switch on enum: " + exprent + " not found, available: " + mapping, Severity.TRACE);
             return null;
           }
           values.add(realConst.copy());
@@ -721,6 +780,23 @@ public final class SwitchHelper {
         Exprent switchSelector = switchStatement.getHeadExprent();
         if (switchSelector == null || switchSelector.type != Exprent.EXPRENT_SWITCH) return;
         for (List<Exprent> values : switchStatement.getCaseValues()) {
+          for (Exprent value : values) {
+            ConstExprent constExprent = (ConstExprent)value;
+            if (constExprent == null) continue;
+            int caseLabelHash = constExprent.getIntValue();
+            String labelValue = mappedCaseLabelValues.get(caseLabelHash);
+            IfStatement ifStatement = mappedIfStatements.get(caseLabelHash);
+            if (labelValue == null || ifStatement == null || ifStatement.getStats().isEmpty()) {
+              DecompilerContext.getLogger().writeMessage(
+                "Unable to simplify ECJ switch on string: hash=" + caseLabelHash +
+                " label=" + labelValue +
+                " ifStatement=" + (ifStatement == null ? "missing" : ifStatement.id),
+                Severity.TRACE);
+              return;
+            }
+          }
+        }
+        for (List<Exprent> values : switchStatement.getCaseValues()) {
           for (int i = 0; i < values.size(); i++) {
             ConstExprent constExprent = (ConstExprent)values.get(i);
             if (constExprent == null) continue;
@@ -728,7 +804,6 @@ public final class SwitchHelper {
             String labelValue = mappedCaseLabelValues.get(caseLabelHash);
             values.set(i, new ConstExprent(VARTYPE_STRING, labelValue, null));
             IfStatement ifStatement = mappedIfStatements.get(caseLabelHash);
-            assert !ifStatement.getStats().isEmpty();
             if (ifStatement.getStats().size() == 1) {
               ifStatement.getParent().replaceStatement(ifStatement, ifStatement.getStats().get(0));
               continue;

@@ -42,7 +42,7 @@ public final class Kt25937_1Kt {
          }
 
          public final Object invoke(Object var1) {
-            return ((<undefinedtype>)this.create((Continuation)var1)).invokeSuspend(Unit.INSTANCE);
+            return ((Kt25937_1Kt$some1$1)this.create((Continuation)var1)).invokeSuspend(Unit.INSTANCE);
          }
       });
    }

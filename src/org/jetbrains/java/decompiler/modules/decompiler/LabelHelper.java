@@ -1,6 +1,8 @@
 // Copyright 2000-2024 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package org.jetbrains.java.decompiler.modules.decompiler;
 
+import org.jetbrains.java.decompiler.main.DecompilerContext;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeDirection;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeType;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
@@ -62,6 +64,12 @@ public final class LabelHelper {
         Statement dest = edge.getDestination();
         if (dest.type != StatementType.DUMMY_EXIT) {
           Statement parent = dest.getParent();
+          if (parent == null) {
+            DecompilerContext.getLogger().writeMessage(
+              "Cannot lift break closure because destination has no parent: dest=" + dest.id + ':' + dest.type,
+              IFernflowerLogger.Severity.TRACE);
+            continue;
+          }
 
           List<Statement> lst = new ArrayList<>();
           if (parent.type == StatementType.SEQUENCE) {
@@ -73,7 +81,15 @@ public final class LabelHelper {
 
           for (int i = 0; i < lst.size(); i++) {
             if (lst.get(i) == dest) {
-              lst.get(i - 1).addLabeledEdge(edge);
+              if (i > 0) {
+                lst.get(i - 1).addLabeledEdge(edge);
+              }
+              else {
+                DecompilerContext.getLogger().writeMessage(
+                  "Cannot lift break closure to previous sibling because destination is first child: dest=" +
+                  dest.id + ':' + dest.type + " parent=" + parent.id + ':' + parent.type,
+                  IFernflowerLogger.Severity.TRACE);
+              }
               break;
             }
           }

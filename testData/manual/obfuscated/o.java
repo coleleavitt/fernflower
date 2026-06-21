@@ -1,4 +1,5 @@
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.regex.Pattern;
 
 public class o {
@@ -22,8 +23,23 @@ public class o {
    }
 
    public boolean b() {
-      // $FF: Couldn't be decompiled
-   }
+      label15:
+      label15: {
+         return var10000;
+         label17: {
+            label18:
+            label18: {
+               var10000 = false;
+               return var10000;
+               label19:
+               label19: {
+                  if (this.a != null)
+                  var10000 = true;
+                  return var10000;
+                  if (!"".equals(this.a)) {
+                     break label19;
+                  }
+               }            }         }      }   }
 
    public boolean c() {
       boolean var10000;
@@ -63,8 +79,24 @@ public class o {
    }
 
    public boolean d() {
-      // $FF: Couldn't be decompiled
-   }
+      label21:
+      label21: {
+         return var10000;
+         label23: {
+            label24:
+            label24: {
+               var10000 = false;
+               return var10000;
+               label25:
+               label25: {
+                  if (this.a != null)
+                  if (!(this.a instanceof Number))
+                  var10000 = true;
+                  return var10000;
+                  if (!b.matcher(this.a("")).matches()) {
+                     break label25;
+                  }
+               }            }         }      }   }
 
    public Object e() {
       return this.a;
@@ -85,13 +117,116 @@ public class o {
       return var10000;
    }
 
-   public <T> T a(Class<?> param1, T param2) {
-      // $FF: Couldn't be decompiled
-   }
+   public <T> T a(Class<?> var1, T var2) {
+      label109:
+      label109: {
+         var10000 = var1.isAssignableFrom(this.a.getClass());
+         if (!var4)
+         if (var10000)
+         return (T)this.a;
+         var10000 = String.class.equals(var1);
+         if (!var4)
+         if (var10000)
+         return (T)this.f();
+         var10000 = Integer.class.equals(var1);
+         if (!var4)
+         if (!var10000)
+         var10000 = Integer.TYPE.equals(var1);
+         if (!var4)
+         if (var10000)
+         return (T)this.i();
+         var10000 = Long.class.equals(var1);
+         if (!var4)
+         if (!var10000)
+         var10000 = Long.TYPE.equals(var1);
+         if (!var4)
+         if (var10000)
+         return (T)this.j();
+         var10000 = Boolean.class.equals(var1);
+         if (!var4)
+         if (!var10000)
+         var10000 = Boolean.TYPE.equals(var1);
+         if (!var4)
+         if (var10000)
+         var10000 = Boolean.parseBoolean(String.valueOf(this.a));
+         return (T)var10000;
+         var10000 = BigDecimal.class.equals(var1);
+         var4 = n.c;
 
-   public <V> V b(Class<V> param1, V param2) {
-      // $FF: Couldn't be decompiled
-   }
+         label112:
+         try {
+            if (this.a == null) {
+               return null;
+            }
+            break label112;
+         } catch (Exception var5) {
+            throw var5;
+         }
+         label114:
+         label114: {
+            throw new IllegalArgumentException(c + var1);
+            label117: {
+               return (T)Enum.valueOf(var1, this.a("").toUpperCase());
+               label119: {
+                  try {
+                     return (T)Enum.valueOf(var10, this.a(""));
+                  } catch (Exception var6) {
+                     boolean var11 = false;
+                     return (T)Enum.valueOf(var1, this.a("").toUpperCase());
+                  }
+                  label122:
+                  label122: {
+                     if (!var10000) {
+                        throw new IllegalArgumentException(c + var1);
+                     } else {
+                        label120:
+                        try {
+                           var10 = var1;
+                           break label120;
+                        } catch (Exception var7) {
+                           boolean var10001 = false;
+                           return (T)Enum.valueOf(var1, this.a("").toUpperCase());
+                        }
+                     }
+                     label126:
+                     label126: {
+                        try {
+                           label124: {
+                              var10 = var1;
+                              if (var4) {
+                                 break label122;
+                              }
+
+                              var10000 = var1.isEnum();
+                              break label124;
+                           }
+                        } catch (Exception var8) {
+                           throw var8;
+                        }
+                        label128:
+                        label128: {
+                           if (var4) {
+                              break label126;
+                           }
+                           return (T)this.a((BigDecimal)null);
+                           if (!var10000) {
+                              break label128;
+                           }
+                        }                     }                  }               }            }         }      }   }
+
+   public <V> V b(Class<V> var1, V var2) {
+      label15: {
+         var3 = this.a((Object)var2);
+         label18:
+         label18: {
+            label19:
+            label19: {
+               if (var3 != null)
+               return var2;
+               if (var1.isAssignableFrom(var3.getClass())) {
+                  return (V)var3;
+               }
+            }         }      }   }
 
    public String f() {
       String var10000;
@@ -162,29 +297,87 @@ public class o {
       return this.a(false);
    }
 
-   public int a(int param1) {
-      // $FF: Couldn't be decompiled
-   }
+   public int a(int var1) {
+      label19:
+      label19: {
+         if (this.a instanceof Integer)
+         return (Integer)this.a;
+         return Integer.parseInt(String.valueOf(this.a));
+         if (this.a()) {
+            return var1;
+         }
+      }   }
 
    public Integer i() {
-      // $FF: Couldn't be decompiled
-   }
+      label19:
+      label19: {
+         if (this.a instanceof Integer)
+         return (Integer)this.a;
+         return Integer.parseInt(String.valueOf(this.a));
+         if (this.a()) {
+            return null;
+         }
+      }   }
 
-   public long a(long param1) {
-      // $FF: Couldn't be decompiled
-   }
+   public long a(long var1) {
+      label25:
+      label25: {
+         if (this.a instanceof Integer)
+         return (long)(Integer)this.a;
+         return Long.parseLong(String.valueOf(this.a));
+         if (this.a instanceof Long) {
+            return (Long)this.a;
+         }
+         if (this.a()) {
+            return var1;
+         }
+      }   }
 
    public Long j() {
-      // $FF: Couldn't be decompiled
-   }
+      label19:
+      label19: {
+         if (this.a instanceof Long)
+         return (Long)this.a;
+         return Long.parseLong(String.valueOf(this.a));
+         if (this.a()) {
+            return null;
+         }
+      }   }
 
-   public double a(double param1) {
-      // $FF: Couldn't be decompiled
-   }
+   public double a(double var1) {
+      label31:
+      label31: {
+         if (this.a instanceof Double)
+         return (Double)this.a;
+         if (this.a instanceof Integer)
+         return (double)(Integer)this.a;
+         return Double.parseDouble(String.valueOf(this.a));
+         if (this.a instanceof Long) {
+            return (double)(Long)this.a;
+         }
+         if (this.a()) {
+            return var1;
+         }
+      }   }
 
-   public BigDecimal a(BigDecimal param1) {
-      // $FF: Couldn't be decompiled
-   }
+   public BigDecimal a(BigDecimal var1) {
+      label37:
+      label37: {
+         if (this.a instanceof Long)
+         return BigDecimal.valueOf((Long)this.a);
+         if (this.a instanceof Long)
+         return BigDecimal.valueOf((Long)this.a);
+         return new BigDecimal(this.a("").replace(",", "."), MathContext.UNLIMITED);
+         if (this.a instanceof Integer) {
+            return BigDecimal.valueOf((long)(Integer)this.a);
+         }
+         if (this.a instanceof Double) {
+            return BigDecimal.valueOf((Double)this.a);
+         }
+         if (this.a()) {
+            return var1;
+         }
+      }   }
 
    public static o b(Object var0) {
       o var1 = new o();
@@ -328,9 +521,24 @@ public class o {
       return var1.length();
    }
 
-   public boolean b(Class<?> param1) {
-      // $FF: Couldn't be decompiled
-   }
+   public boolean b(Class<?> var1) {
+      label13:
+      label13: {
+         return var10000;
+         label15: {
+            var10000 = false;
+            return var10000;
+            label16:
+            label16: {
+               var10000 = true;
+               return var10000;
+               if (!var1.isAssignableFrom(this.e().getClass())) {
+                  break label16;
+               }
+               if (this.e() == null) {
+                  break label16;
+               }
+            }         }      }   }
 
    static {
       char[] var17;

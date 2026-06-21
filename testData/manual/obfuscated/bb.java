@@ -1,7 +1,12 @@
+import com.lowagie.text.Image;
+import com.lowagie.text.pdf.Barcode128;
+import java.awt.Color;
 import org.xhtmlrenderer.extend.FSImage;
 import org.xhtmlrenderer.extend.ReplacedElement;
 import org.xhtmlrenderer.extend.UserAgentCallback;
 import org.xhtmlrenderer.layout.LayoutContext;
+import org.xhtmlrenderer.pdf.ITextFSImage;
+import org.xhtmlrenderer.pdf.ITextImageElement;
 import org.xhtmlrenderer.pdf.ITextOutputDevice;
 import org.xhtmlrenderer.pdf.ITextReplacedElementFactory;
 import org.xhtmlrenderer.render.BlockBox;
@@ -14,13 +19,125 @@ public class bb extends ITextReplacedElementFactory {
       super(var1);
    }
 
-   public ReplacedElement createReplacedElement(LayoutContext param1, BlockBox param2, UserAgentCallback param3, int param4, int param5) {
-      // $FF: Couldn't be decompiled
-   }
+   public ReplacedElement createReplacedElement(LayoutContext var1, BlockBox var2, UserAgentCallback var3, int var4, int var5) {
+      label68:
+      label68: {
+         var10 = b;
+         var6 = var2.getElement();
+         var10000 = var6;
+         if (!var10)
+         if (var6 == null)
+         return null;
+         var10000 = var6;
+         var7 = var10000.getNodeName();
+         var16 = var7.equals(a[0]);
+         if (!var10)
+         if (var16)
+         var16 = a[3].equals(var6.getAttribute(a[2]));
+         if (var16)
+         Barcode128 var8 = new Barcode128();
+         var8.setCode(var6.getAttribute(a[1]));
+         var9 = new ITextFSImage(Image.getInstance(var8.createAwtImage(Color.BLACK, Color.WHITE), Color.WHITE));
+         return new ITextImageElement(var9);
+         var14 = var3.getImageResource(var6.getAttribute(a[4])).getImage();
+         if (var14 != null)
+         var19 = var4;
+         var22 = -1;
+         if (!var10)
+         if (var4 == -1)
+         var19 = var5;
+         var22 = -1;
+         if (var19 != var22)
+         return new ITextImageElement(var14);
+         return super.createReplacedElement(var1, var2, var3, var4, var5);
+         n var15 = this.a(var4, var5, var14);
 
-   private n<Integer, Integer> a(int param1, int param2, FSImage param3) {
-      // $FF: Couldn't be decompiled
-   }
+         try {
+            if (var15 != null) {
+               var14.scale((Integer)var15.a(), (Integer)var15.b());
+               return new ITextImageElement(var14);
+            }
+
+            return new ITextImageElement(var14);
+         } catch (Throwable var11) {
+            throw var11;
+         }
+         label73: {
+            throw var18;
+            label77: {
+               try {
+                  var9.scale(var4, var5);
+                  return new ITextImageElement(var9);
+               } catch (Throwable var12) {
+                  var18 = var12;
+                  var22 = 0;
+                  throw var18;
+               }
+               label79:
+               label79: {
+                  label78:
+                  try {
+                     if (var17 == var22) {
+                        return new ITextImageElement(var9);
+                     }
+                     break label78;
+                  } catch (Throwable var13) {
+                     var18 = var13;
+                     var22 = 0;
+                     throw var18;
+                  }
+                  label81:
+                  label81: {
+                     if (var4 != -1) {
+                        break label79;
+                     }
+                     var17 = var5;
+                     var22 = -1;
+                     var17 = var4;
+                     var22 = -1;
+                     if (var10) {
+                        break label81;
+                     }
+                  }               }            }         }      }   }
+
+   private n<Integer, Integer> a(int var1, int var2, FSImage var3) {
+      label39:
+      label39: {
+         if (var1 == -1)
+         var4 = -1;
+         var5 = var3.getHeight();
+         if (var3.getWidth() > var1)
+         if (var1 > -1)
+         var4 = var1;
+         var5 = var1 * var3.getHeight() / var3.getWidth();
+         if (var2 > -1)
+         if (var5 > var2)
+         var5 = var2;
+         var4 = var2 * var3.getWidth() / var3.getHeight();
+         label42:
+         try {
+            if (var4 == -1) {
+               return null;
+            }
+            break label42;
+         } catch (a_ var6) {
+            throw var6;
+         }
+         if (var2 == -1) {
+            return null;
+         }
+         label44:
+         label44: {
+            return new n<Integer, Integer>(var4, var5);
+            label45: {
+               label47:
+               label47: {
+                  if (var4 <= var3.getWidth())
+                  return null;
+                  if (var4 <= var3.getHeight()) {
+                     return new n<Integer, Integer>(var4, var5);
+                  }
+               }            }         }      }   }
 
    static {
       String[] var10000 = new String[5];

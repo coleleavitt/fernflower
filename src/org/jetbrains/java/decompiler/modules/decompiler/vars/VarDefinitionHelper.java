@@ -4,6 +4,7 @@ package org.jetbrains.java.decompiler.modules.decompiler.vars;
 import org.jetbrains.java.decompiler.code.CodeConstants;
 import org.jetbrains.java.decompiler.main.ClassesProcessor;
 import org.jetbrains.java.decompiler.main.DecompilerContext;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.main.collectors.VarNamesCollector;
 import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.AssignmentExprent;
@@ -54,6 +55,7 @@ public class VarDefinitionHelper {
   private final HashSet<Integer> implDefVars;
 
   private final VarProcessor varproc;
+  private final HashSet<Integer> missingOriginalIndexVars = new HashSet<>();
 
   private final Statement root;
   private final StructMethod mt;
@@ -547,7 +549,7 @@ public class VarDefinitionHelper {
         Exprent exp = stat.getVarDefinitions().get(x);
         if (exp.type == Exprent.EXPRENT_VAR) {
           VarExprent var = (VarExprent)exp;
-          int index = varproc.getVarOriginalIndex(var.getIndex());
+          int index = getOriginalIndexOrCurrent(var);
           if (this_vars.containsKey(index)) {
             stat.getVarDefinitions().remove(x);
             return new VPPEntry(var, this_vars.get(index));
@@ -660,7 +662,7 @@ public class VarDefinitionHelper {
       return null;
     }
 
-    int index = varproc.getVarOriginalIndex(var.getIndex());
+    int index = getOriginalIndexOrCurrent(var);
     VarVersion new_ = this_vars.get(index);
     if (new_ != null) {
       VarVersion old = new VarVersion(var);
@@ -676,6 +678,19 @@ public class VarDefinitionHelper {
     }
 
     return null;
+  }
+
+  private int getOriginalIndexOrCurrent(VarExprent var) {
+    Integer originalIndex = varproc.getVarOriginalIndex(var.getIndex());
+    if (originalIndex == null) {
+      if (missingOriginalIndexVars.add(var.getIndex())) {
+        DecompilerContext.getLogger().writeMessage(
+          "Variable original index is missing; using current index: var=" + var.getIndex() + " version=" + var.getVersion(),
+          IFernflowerLogger.Severity.TRACE);
+      }
+      originalIndex = var.getIndex();
+    }
+    return originalIndex;
   }
 
   private boolean remapVar(Statement stat, VarVersion from, VarVersion to) {
@@ -760,6 +775,23 @@ public class VarDefinitionHelper {
           }
           VarType merged = getMergedType(from, to);
           if (merged == null) { // Types incompatible, do not merge
+            DecompilerContext.getLogger().writeMessage(
+              "Skipping incompatible constant variable merge: from=" + from + " to=" + to +
+              " constType=" + right.getConstType() + " value=" + right.getValue(),
+              IFernflowerLogger.Severity.TRACE);
+            continue;
+          }
+          if (right.getConstType().getTypeFamily() > CodeConstants.TYPE_FAMILY_INTEGER ||
+              merged.getTypeFamily() > CodeConstants.TYPE_FAMILY_INTEGER) {
+            if (!right.getConstType().equals(merged)) {
+              DecompilerContext.getLogger().writeMessage(
+                "Skipping non-primitive constant type merge: from=" + from +
+                " to=" + to +
+                " constType=" + right.getConstType() +
+                " mergedType=" + merged +
+                " value=" + right.getValue(),
+                IFernflowerLogger.Severity.TRACE);
+            }
             continue;
           }
 
@@ -774,6 +806,9 @@ public class VarDefinitionHelper {
         }
         VarType merged = getMergedType(from, to);
         if (merged == null) { // Types incompatible, do not merge
+          DecompilerContext.getLogger().writeMessage(
+            "Skipping incompatible variable merge: from=" + from + " to=" + to + " varType=" + var.getVarType(),
+            IFernflowerLogger.Severity.TRACE);
           continue;
         }
         // Reject merge if it would narrow the 'to' variable from Object to a more specific type.
@@ -806,6 +841,12 @@ public class VarDefinitionHelper {
   private static VarType getMergedType(VarType fromMin, VarType toMin, VarType fromMax, VarType toMax) {
     if (fromMin != null && fromMin.equals(toMin)) {
       return fromMin; // Short circuit this for simplicities sake
+    }
+    if (fromMin != null && toMin != null &&
+        fromMin.getTypeFamily() > CodeConstants.TYPE_FAMILY_INTEGER &&
+        toMin.getTypeFamily() > CodeConstants.TYPE_FAMILY_INTEGER &&
+        fromMin.getArrayDim() != toMin.getArrayDim()) {
+      return null;
     }
     VarType type = fromMin == null ? toMin : (toMin == null ? fromMin : VarType.getCommonSupertype(fromMin, toMin));
     if (type == null || fromMin == null || toMin == null) {
@@ -1032,16 +1073,32 @@ public class VarDefinitionHelper {
     private final VarType type;
 
     private VarInfo(LocalVariable lvt, VarType type) {
-      if (lvt != null && lvt.getSignature() != null)
-        this.cast = ExprProcessor.getCastTypeName(GenericType.parse(lvt.getSignature()), false, Collections.emptyList());
-      else if (lvt != null)
-        this.cast = ExprProcessor.getCastTypeName(lvt.getVarType(), false, Collections.emptyList());
-      else if (type != null)
-        this.cast = ExprProcessor.getCastTypeName(type, false, Collections.emptyList());
-      else
-        this.cast = "this";
+      this.cast = getSafeCastName(lvt, type);
       this.lvt = lvt;
       this.type = type;
+    }
+
+    private static String getSafeCastName(LocalVariable lvt, VarType type) {
+      try {
+        if (lvt != null && lvt.getSignature() != null) {
+          return ExprProcessor.getCastTypeName(GenericType.parse(lvt.getSignature()), false, Collections.emptyList());
+        }
+        else if (lvt != null) {
+          return ExprProcessor.getCastTypeName(lvt.getVarType(), false, Collections.emptyList());
+        }
+        else if (type != null) {
+          return ExprProcessor.getCastTypeName(type, false, Collections.emptyList());
+        }
+      }
+      catch (RuntimeException ex) {
+        DecompilerContext.getLogger().writeMessage(
+          "Unable to render variable type for LVT propagation; using Object for naming only. lvt=" + lvt + ", type=" + type,
+          IFernflowerLogger.Severity.TRACE,
+          ex);
+        return "java.lang.Object";
+      }
+
+      return "this";
     }
 
     public LocalVariable getLVT() {

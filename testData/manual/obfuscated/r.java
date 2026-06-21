@@ -1,5 +1,6 @@
 import java.sql.SQLException;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class r {
@@ -14,9 +15,51 @@ public class r {
       return new s(var0);
    }
 
-   private static a9 a(p param0) {
-      // $FF: Couldn't be decompiled
-   }
+   private static a9 a(p var0) {
+      label32: {
+         var4 = s.d;
+         label44:
+         label44: {
+            return (a9)var10000;
+            label45: {
+               for(q var2 : b) {
+                  label34:
+                  try {
+                     var2.a(var0);
+                     break label34;
+                  } catch (Throwable var5) {
+                     a.log(Level.SEVERE, var5.getMessage(), var5);
+                     break label34;
+                  }
+
+                  if (var4 != 0) {
+                     break;
+                  }
+                  continue;
+               }
+
+               return new a9(var0.a(), var0.f());
+               label47:
+               label47: {
+                  a.severe(var0.toString());
+                  label49:
+                  label49: {
+                     if (var4 != 0) {
+                        break label47;
+                     }
+                     var10000 = var0.f();
+                     if (var4 != 0) {
+                        return (a9)var10000;
+                     }
+                     var10000 = var0.f();
+                     return (a9)var10000;
+                     if (!(var10000 instanceof a9)) {
+                        break label49;
+                     }
+                     if (var0.f() == null) {
+                        break label49;
+                     }
+                  }               }            }         }      }   }
 
    public static a9 a(Throwable var0) {
       try {

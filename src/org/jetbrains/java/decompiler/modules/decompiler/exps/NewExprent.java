@@ -10,6 +10,7 @@ import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.collectors.BytecodeMappingTracer;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
+import org.jetbrains.java.decompiler.main.rels.MethodWrapper;
 import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.vars.CheckTypesResult;
 import org.jetbrains.java.decompiler.modules.decompiler.vars.VarVersion;
@@ -202,7 +203,17 @@ public class NewExprent extends Exprent {
             }
           }
 
-          GenericClassDescriptor descriptor = child.getWrapper().getClassStruct().getSignature();
+          GenericClassDescriptor descriptor;
+          if (child.getWrapper() == null) {
+            DecompilerContext.getLogger().writeMessage(
+              "Anonymous class wrapper missing while rendering " + child.classStruct.qualifiedName +
+              "; using StructClass signature",
+              IFernflowerLogger.Severity.TRACE);
+            descriptor = child.classStruct.getSignature();
+          }
+          else {
+            descriptor = child.getWrapper().getClassStruct().getSignature();
+          }
           if (descriptor != null) {
             if (descriptor.superinterfaces.isEmpty()) {
               buf.append(ExprProcessor.getCastTypeName(descriptor.superclass, Collections.emptyList()));
@@ -226,16 +237,39 @@ public class NewExprent extends Exprent {
 
       if (!lambda && constructor != null) {
         List<Exprent> parameters = constructor.getParameters();
-        List<VarVersion> mask = child.getWrapper().getMethodWrapper(CodeConstants.INIT_NAME, constructor.getStringDescriptor()).synthParameters;
-        if (mask == null) {
+        List<VarVersion> mask = null;
+        if (child.getWrapper() != null) {
+          MethodWrapper initWrapper = child.getWrapper().getMethodWrapper(CodeConstants.INIT_NAME, constructor.getStringDescriptor());
+          if (initWrapper != null) {
+            mask = initWrapper.synthParameters;
+          }
+          else {
+            DecompilerContext.getLogger().writeMessage(
+              "Anonymous constructor wrapper missing for " + child.classStruct.qualifiedName +
+              constructor.getStringDescriptor(),
+              IFernflowerLogger.Severity.TRACE);
+          }
+        }
+        else {
+          DecompilerContext.getLogger().writeMessage(
+            "Anonymous class wrapper missing while deriving synthetic parameters for " + child.classStruct.qualifiedName,
+            IFernflowerLogger.Severity.TRACE);
+        }
+
+        if (mask == null && child.superInvocation != null) {
           InvocationExprent superCall = child.superInvocation;
           mask = ExprUtil.getSyntheticParametersMask(superCall.getClassName(), superCall.getStringDescriptor(), parameters.size());
+        }
+        else if (mask == null) {
+          DecompilerContext.getLogger().writeMessage(
+            "Unable to derive synthetic parameter mask for " + child.classStruct.qualifiedName,
+            IFernflowerLogger.Severity.TRACE);
         }
 
         int start = enumConst ? 2 : 0;
         boolean firstParam = true;
         for (int i = start; i < parameters.size(); i++) {
-          if (mask == null || mask.get(i) == null) {
+          if (mask == null || i >= mask.size() || mask.get(i) == null) {
             if (!firstParam) {
               buf.append(", ");
             }

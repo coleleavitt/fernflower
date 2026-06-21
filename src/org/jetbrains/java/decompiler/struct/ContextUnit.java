@@ -115,29 +115,32 @@ public class ContextUnit {
         resultSaver.saveFolder(archivePath);
         resultSaver.createArchive(archivePath, filename, manifest);
 
-        // directory entries
-        for (String dirEntry : dirEntries) {
-          resultSaver.saveDirEntry(archivePath, filename, dirEntry);
-        }
+        try {
+          // directory entries
+          for (String dirEntry : dirEntries) {
+            resultSaver.saveDirEntry(archivePath, filename, dirEntry);
+          }
 
-        // non-class entries
-        for (String[] pair : otherEntries) {
-          if (type != TYPE_JAR || !JarFile.MANIFEST_NAME.equalsIgnoreCase(pair[1])) {
-            resultSaver.copyEntry(pair[0], archivePath, filename, pair[1]);
+          // non-class entries
+          for (String[] pair : otherEntries) {
+            if (type != TYPE_JAR || !JarFile.MANIFEST_NAME.equalsIgnoreCase(pair[1])) {
+              resultSaver.copyEntry(pair[0], archivePath, filename, pair[1]);
+            }
+          }
+
+          // classes
+          for (int i = 0; i < classes.size(); i++) {
+            StructClass cl = classes.get(i);
+            String entryName = decompiledData.getClassEntryName(cl, classEntries.get(i));
+            if (entryName != null) {
+              String content = decompiledData.getClassContent(cl);
+              resultSaver.saveClassEntry(archivePath, filename, cl.qualifiedName, entryName, content);
+            }
           }
         }
-
-        // classes
-        for (int i = 0; i < classes.size(); i++) {
-          StructClass cl = classes.get(i);
-          String entryName = decompiledData.getClassEntryName(cl, classEntries.get(i));
-          if (entryName != null) {
-            String content = decompiledData.getClassContent(cl);
-            resultSaver.saveClassEntry(archivePath, filename, cl.qualifiedName, entryName, content);
-          }
+        finally {
+          resultSaver.closeArchive(archivePath, filename);
         }
-
-        resultSaver.closeArchive(archivePath, filename);
       }
     }
   }

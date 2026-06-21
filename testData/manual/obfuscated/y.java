@@ -13,6 +13,22 @@ public class y<P> {
    }
 
    public P a() {
-      // $FF: Couldn't be decompiled
-   }
+      label14:
+      label14: {
+         return (P)var10000;
+         label16: {
+            var10000 = this.a;
+            return (P)var10000;
+            label18:
+            label18: {
+               var10000 = this;
+               if (d != 0) {
+                  return (P)var10000;
+               }
+               this.a = (P)t.a(this.b);
+               this.c = true;
+               if (this.c) {
+                  break label18;
+               }
+            }         }      }   }
 }

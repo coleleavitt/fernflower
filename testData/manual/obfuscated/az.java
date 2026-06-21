@@ -40,9 +40,67 @@ class az {
       return this.c.equals(this.b);
    }
 
-   private void a(String param1, Attributes param2) {
-      // $FF: Couldn't be decompiled
-   }
+   private void a(String var1, Attributes var2) {
+      label63:
+      label63: {
+         var6 = bc.e;
+         var3 = this.a.createElement(var1);
+         var4 = 0;
+         this.c = var3;
+         return;
+         label65:
+         label65: {
+            label68:
+            label68: {
+               label70:
+               label70: {
+                  throw var7;
+                  label71: {
+                     label73:
+                     label73: {
+                        if (var4 < var2.getLength())
+                        var5 = var2.getLocalName(var4);
+                        if (var6 == 0)
+                        this.a.appendChild(var3);
+                        var10000 = var5;
+                        if (var6 == 0)
+                        var5 = var10000;
+                        if (var5 != null)
+                        var10000 = var5;
+                        var10000 = var2.getQName(var4);
+                        var10000 = "";
+                        if (var6 == 0)
+                        if (var6 == 0)
+                        if ("".equals(var5))
+                        if (!var10000.equals(var5))
+                        if (var10000 == null)
+                        ++var4;
+                        if (var6 == 0) {
+                           continue label65;
+                        }
+                        label72:
+                        try {
+                           var3.setAttribute(var5, var2.getValue(var4));
+                           break label72;
+                        } catch (DOMException var7) {
+                           boolean var10001 = false;
+                           throw var7;
+                        }
+                        var10000 = "";
+                        throw var7;
+                        label74:
+                        label74: {
+                           var10 = this.c;
+                           if (var6 != 0) {
+                              break label68;
+                           }
+                           if (var10 != null)
+                           this.b = var3;
+                           this.c.appendChild(var3);
+                           if (var6 == 0) {
+                              break label65;
+                           }
+                        }                     }                  }               }            }         }      }   }
 
    public Node c() {
       return this.b;

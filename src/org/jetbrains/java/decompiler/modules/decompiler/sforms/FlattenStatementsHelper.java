@@ -1,6 +1,8 @@
 // Copyright 2000-2024 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.jetbrains.java.decompiler.modules.decompiler.sforms;
 
+import org.jetbrains.java.decompiler.main.DecompilerContext;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeType;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
@@ -135,7 +137,14 @@ public class FlattenStatementsHelper {
 
             // 'if' statement: record positive branch
             if (stat.getLastBasicType() == StatementType.IF) {
-              mapPosIfBranch.put(sourcenode.id, lstSuccEdges.get(0).getDestination().id);
+              if (lstSuccEdges.isEmpty()) {
+                DecompilerContext.getLogger().writeMessage(
+                  "Skipping positive branch metadata for flattened if statement " + stat.id + ": no successor edges",
+                  IFernflowerLogger.Severity.TRACE);
+              }
+              else {
+                mapPosIfBranch.put(sourcenode.id, lstSuccEdges.get(0).getDestination().id);
+              }
             }
           }
           case CATCH_ALL, TRY_CATCH -> {
@@ -260,7 +269,7 @@ public class FlattenStatementsHelper {
               }
             }
           }
-          case SYNCHRONIZED, SWITCH, IF, SEQUENCE, ROOT -> {
+          case SYNCHRONIZED, SWITCH, IF, SEQUENCE, ROOT, GENERAL -> {
             int statsize = stat.getStats().size();
             if (stat.type == StatementType.SYNCHRONIZED) {
               statsize = 2;  // exclude the handler if synchronized
@@ -284,7 +293,17 @@ public class FlattenStatementsHelper {
                 continue mainloop;
               }
 
-              node = graph.nodes.getWithKey(mapDestinationNodes.get(stat.getFirst().id)[0]);
+              String[] destinationNodes = mapDestinationNodes.get(stat.getFirst().id);
+              if (destinationNodes == null) {
+                traceMissingDestination("container head was not flattened", stat, stat.getFirst());
+                break;
+              }
+
+              node = graph.nodes.getWithKey(destinationNodes[0]);
+              if (node == null) {
+                traceMissingNode("container head direct node was not created", stat, stat.getFirst(), destinationNodes[0]);
+                break;
+              }
               mapDestinationNodes.put(stat.id, new String[]{node.id, null});
 
               if (stat.type == StatementType.IF && stat instanceof IfStatement && ((IfStatement)stat).iftype == IfStatement.IFTYPE_IF) {
@@ -441,7 +460,23 @@ public class FlattenStatementsHelper {
 
       DirectNode source = graph.nodes.getWithKey(sourceid);
 
-      DirectNode dest = graph.nodes.getWithKey(mapDestinationNodes.get(statid)[edge.edgetype == EdgeType.CONTINUE ? 1 : 0]);
+      String[] destinationNodes = mapDestinationNodes.get(statid);
+      if (destinationNodes == null) {
+        traceMissingDestination("edge destination was not flattened", source, statid, edge.edgetype);
+        continue;
+      }
+
+      String destinationId = destinationNodes[edge.edgetype == EdgeType.CONTINUE ? 1 : 0];
+      if (destinationId == null) {
+        traceMissingDestination("edge destination has no direct node for edge type", source, statid, edge.edgetype);
+        continue;
+      }
+
+      DirectNode dest = graph.nodes.getWithKey(destinationId);
+      if (source == null || dest == null) {
+        traceMissingNode("direct edge endpoint was not created", sourceid, statid, destinationId, edge.edgetype);
+        continue;
+      }
 
       if (!source.successors.contains(dest)) {
         source.successors.add(dest);
@@ -466,8 +501,28 @@ public class FlattenStatementsHelper {
 
           boolean isContinueEdge = arr[i == 0 ? 4 : 3] != null;
 
-          DirectNode dest = graph.nodes.getWithKey(mapDestinationNodes.get(Integer.parseInt(arr[1]))[isContinueEdge ? 1 : 0]);
-          DirectNode enter = graph.nodes.getWithKey(mapDestinationNodes.get(Integer.parseInt(arr[2]))[0]);
+          int destinationStatement = Integer.parseInt(arr[1]);
+          int enterStatement = Integer.parseInt(arr[2]);
+          String[] destinationNodes = mapDestinationNodes.get(destinationStatement);
+          String[] enterNodes = mapDestinationNodes.get(enterStatement);
+          if (destinationNodes == null || enterNodes == null) {
+            traceMissingDestination("finally path destination was not flattened", ent.getKey(), destinationStatement, enterStatement);
+            continue;
+          }
+
+          String destinationId = destinationNodes[isContinueEdge ? 1 : 0];
+          String enterId = enterNodes[0];
+          if (destinationId == null || enterId == null) {
+            traceMissingDestination("finally path has no direct node for edge type", ent.getKey(), destinationStatement, enterStatement);
+            continue;
+          }
+
+          DirectNode dest = graph.nodes.getWithKey(destinationId);
+          DirectNode enter = graph.nodes.getWithKey(enterId);
+          if (dest == null || enter == null) {
+            traceMissingNode("finally path direct endpoint was not created", ent.getKey(), destinationStatement, destinationId, enterStatement, enterId);
+            continue;
+          }
 
           newLst.add(new FinallyPathWrapper(arr[0], dest.id, enter.id));
 
@@ -487,6 +542,52 @@ public class FlattenStatementsHelper {
 
   public Map<Integer, String[]> getMapDestinationNodes() {
     return mapDestinationNodes;
+  }
+
+  private static void traceMissingDestination(String message, Statement owner, Statement target) {
+    DecompilerContext.getLogger().writeMessage(
+      message + ": owner=" + describe(owner) + " target=" + describe(target),
+      IFernflowerLogger.Severity.TRACE);
+  }
+
+  private static void traceMissingDestination(String message, DirectNode source, Integer statid, EdgeType edgeType) {
+    DecompilerContext.getLogger().writeMessage(
+      message + ": source=" + (source == null ? "null" : source.id) + " targetStat=" + statid + " edgeType=" + edgeType,
+      IFernflowerLogger.Severity.TRACE);
+  }
+
+  private static void traceMissingDestination(String message, String source, int destinationStatement, int enterStatement) {
+    DecompilerContext.getLogger().writeMessage(
+      message + ": source=" + source + " destinationStat=" + destinationStatement + " enterStat=" + enterStatement,
+      IFernflowerLogger.Severity.TRACE);
+  }
+
+  private static void traceMissingNode(String message, Statement owner, Statement target, String nodeId) {
+    DecompilerContext.getLogger().writeMessage(
+      message + ": owner=" + describe(owner) + " target=" + describe(target) + " node=" + nodeId,
+      IFernflowerLogger.Severity.TRACE);
+  }
+
+  private static void traceMissingNode(String message, String sourceId, Integer statid, String destinationId, EdgeType edgeType) {
+    DecompilerContext.getLogger().writeMessage(
+      message + ": source=" + sourceId + " targetStat=" + statid + " destinationNode=" + destinationId + " edgeType=" + edgeType,
+      IFernflowerLogger.Severity.TRACE);
+  }
+
+  private static void traceMissingNode(String message,
+                                       String source,
+                                       int destinationStatement,
+                                       String destinationId,
+                                       int enterStatement,
+                                       String enterId) {
+    DecompilerContext.getLogger().writeMessage(
+      message + ": source=" + source + " destinationStat=" + destinationStatement + " destinationNode=" + destinationId +
+      " enterStat=" + enterStatement + " enterNode=" + enterId,
+      IFernflowerLogger.Severity.TRACE);
+  }
+
+  private static String describe(Statement statement) {
+    return statement == null ? "null" : statement.id + ":" + statement.type;
   }
 
   public static final class FinallyPathWrapper {

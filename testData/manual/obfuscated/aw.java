@@ -12,16 +12,42 @@ class aw extends ap {
    }
 
    public double d() {
-      // $FF: Couldn't be decompiled
-   }
+      label13:
+      label13: {
+         return (double)var10000.getUsage().getUsed() / 1024.0 / 1024.0;
+         label15: {
+            if (var10000 == null)
+            var10000 = this.d;
+            return (double)var10000.getUsage().getUsed() / 1024.0 / 1024.0;
+            return 0.0;
+            var10000 = this.d;
+            if (an.k) {
+               return (double)var10000.getUsage().getUsed() / 1024.0 / 1024.0;
+            }
+         }      }   }
 
    public String c() {
       return f[2];
    }
 
    public Double e() {
-      // $FF: Couldn't be decompiled
-   }
+      label13:
+      label13: {
+         return (double)var10000.getUsage().getMax() / 1024.0 / 1024.0;
+         label15: {
+            var10000 = this.d;
+            return (double)var10000.getUsage().getMax() / 1024.0 / 1024.0;
+            label17:
+            label17: {
+               var10000 = this.d;
+               if (an.k) {
+                  return (double)var10000.getUsage().getMax() / 1024.0 / 1024.0;
+               }
+               return 0.0;
+               if (var10000 != null) {
+                  break label17;
+               }
+            }         }      }   }
 
    static {
       String[] var10000 = new String[3];

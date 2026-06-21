@@ -21,9 +21,52 @@ public abstract class ap implements ak {
       return (this.b + this.a).hashCode();
    }
 
-   public boolean equals(Object param1) {
-      // $FF: Couldn't be decompiled
-   }
+   public boolean equals(Object var1) {
+      label39:
+      label39: {
+         var2 = an.k;
+         var10000 = var1;
+         if (!var2)
+         if (var1 != null)
+         var10000 = var1;
+         var4 = var10000 instanceof ak;
+         if (!var2)
+         if (!var4)
+         return false;
+         var4 = al.a(this.a, ((ak)var1).b());
+         return var4;
+         label41: {
+            var4 = true;
+            return var4;
+            label43:
+            label43: {
+               var4 = false;
+               return var4;
+               label47:
+               label47: {
+                  try {
+                     label42:
+                     if (var2) {
+                        return var4;
+                     } else {
+                        if (var4) {
+                           break label43;
+                        }
+                        break label42;
+                     }
+                  } catch (a_ var3) {
+                     throw var3;
+                  }
+                  label49:
+                  label49: {
+                     if (!var4) {
+                        break label47;
+                     }
+                     var4 = al.a(this.b, ((ak)var1).a());
+                     if (var2) {
+                        break label49;
+                     }
+                  }               }            }         }      }   }
 
    public String toString() {
       return this.b + d + this.a;

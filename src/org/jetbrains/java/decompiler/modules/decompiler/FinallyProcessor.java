@@ -11,6 +11,7 @@ import org.jetbrains.java.decompiler.code.cfg.ControlFlowGraph;
 import org.jetbrains.java.decompiler.code.cfg.ExceptionRangeCFG;
 import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.collectors.CounterContainer;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.jetbrains.java.decompiler.modules.code.DeadCodeHelper;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeType;
@@ -36,16 +37,19 @@ import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 
 public class FinallyProcessor {
   private final Map<Integer, Integer> finallyBlockIDs = new HashMap<>();
@@ -89,14 +93,17 @@ public class FinallyProcessor {
           Record inf = getFinallyInformation(cl, mt, root, fin);
 
           if (inf == null) { // inconsistent finally
+            traceFinallyDecision(mt, "finally information rejected", handler, null);
             catchallBlockIDs.put(handler.id, null);
           }
           else {
-            if (DecompilerContext.getOption(IFernflowerPreferences.FINALLY_DEINLINE) && verifyFinallyEx(graph, fin, inf)) {
+            if (DecompilerContext.getOption(IFernflowerPreferences.FINALLY_DEINLINE) && verifyFinallyEx(graph, mt, fin, inf)) {
+              traceFinallyDecision(mt, "de-inlined finally handler", handler, inf);
               finallyBlockIDs.put(handler.id, null);
             }
             else {
               int varIndex = DecompilerContext.getCounterContainer().getCounterAndIncrement(CounterContainer.VAR_COUNTER);
+              traceFinallyDecision(mt, "inserting finally semaphore var=" + varIndex, handler, inf);
               insertSemaphore(graph, getAllBasicBlocks(fin.getFirst()), head, handler, varIndex, inf, bytecodeVersion);
 
               finallyBlockIDs.put(handler.id, varIndex);
@@ -147,8 +154,20 @@ public class FinallyProcessor {
     ssa.splitVariables(root, mt);
 
     List<Exprent> expressions = firstBlockStatement.getExprents();
+    int throwableAssignmentIndex = firstCode == 2 ? 1 : 0;
+    if (expressions == null || expressions.size() <= throwableAssignmentIndex ||
+        !(expressions.get(throwableAssignmentIndex) instanceof AssignmentExprent throwableAssignment) ||
+        !(throwableAssignment.getLeft() instanceof VarExprent)) {
+      DecompilerContext.getLogger().writeMessage(
+        "Finally handler has no throwable assignment expression: handler=" + fstat.getHandler().id +
+        " firstBlock=" + firstBlockStatement.id +
+        " firstCode=" + firstCode +
+        " expressions=" + (expressions == null ? "null" : expressions.size()),
+        IFernflowerLogger.Severity.TRACE);
+      return null;
+    }
 
-    VarVersion pair = new VarVersion((VarExprent)((AssignmentExprent)expressions.get(firstCode == 2 ? 1 : 0)).getLeft());
+    VarVersion pair = new VarVersion((VarExprent)throwableAssignment.getLeft());
 
     FlattenStatementsHelper flattenHelper = new FlattenStatementsHelper();
     DirectGraph dgraph = flattenHelper.buildDirectGraph(root);
@@ -204,7 +223,8 @@ public class FinallyProcessor {
               }
 
               if (!found) {
-                return null;
+                return traceFinallyInformationRejected("throwable variable is used without a matching throw", mt,
+                                                       fstat, firstBlockStatement, firstCode);
               }
               else {
                 isTrueExit = true;
@@ -240,7 +260,8 @@ public class FinallyProcessor {
                 }
 
                 if (!found) {
-                  return null;
+                  return traceFinallyInformationRejected("stored throwable is not rethrown by the next expression", mt,
+                                                         fstat, firstBlockStatement, firstCode);
                 }
                 else {
                   isTrueExit = true;
@@ -304,7 +325,7 @@ public class FinallyProcessor {
 
     // first and last statements
     removeExceptionInstructionsEx(handler, 1, finallyType);
-    for (Entry<BasicBlock, Boolean> entry : mapLast.entrySet()) {
+    for (Entry<BasicBlock, Boolean> entry : sortedBlockEntries(mapLast)) {
       BasicBlock last = entry.getKey();
 
       if (entry.getValue()) {
@@ -315,7 +336,7 @@ public class FinallyProcessor {
 
     final int storeLength = var <= 3 ? 1 : var <= 128 ? 2 : 4;
     // disable semaphore at statement exit points
-    for (BasicBlock block : setTry) {
+    for (BasicBlock block : sortedBlocks(setTry)) {
       for (BasicBlock dest : block.getSuccessors()) {
         // break out
         if (dest != graph.getLast() && !setCopy.contains(dest)) {
@@ -417,14 +438,14 @@ public class FinallyProcessor {
     }
     while (index < lst.size());
 
-    Set<BasicBlock> res = new HashSet<>();
+    Set<BasicBlock> res = new LinkedHashSet<>();
     for (Statement st : lst) {
       res.add(((BasicBlockStatement)st).getBlock());
     }
     return res;
   }
 
-  private boolean verifyFinallyEx(ControlFlowGraph graph, CatchAllStatement fstat, Record information) {
+  private boolean verifyFinallyEx(ControlFlowGraph graph, StructMethod mt, CatchAllStatement fstat, Record information) {
     Set<BasicBlock> tryBlocks = getAllBasicBlocks(fstat.getFirst());
     Set<BasicBlock> catchBlocks = getAllBasicBlocks(fstat.getHandler());
 
@@ -469,6 +490,10 @@ public class FinallyProcessor {
     for (BasicBlock start : starts) {
       Area arr = compareSubGraphsEx(graph, start, catchBlocks, first, finallyType, mapLast, skippedFirst);
       if (arr == null) {
+        DecompilerContext.getLogger().writeMessage(
+          "Finally de-inline rejected for " + describeMethod(mt) +
+          " start=" + start.id + " handler=" + first.id,
+          IFernflowerLogger.Severity.TRACE);
         return false;
       }
       areas.add(arr);
@@ -533,9 +558,9 @@ public class FinallyProcessor {
 
     List<BlockStackEntry> stack = new LinkedList<>();
 
-    Set<BasicBlock> setSample = new HashSet<>();
+    Set<BasicBlock> setSample = new LinkedHashSet<>();
 
-    Map<String, BasicBlock[]> mapNext = new HashMap<>();
+    Map<String, BasicBlock[]> mapNext = new TreeMap<>();
 
     stack.add(new BlockStackEntry(startCatch, startSample, new ArrayList<>()));
 
@@ -619,7 +644,7 @@ public class FinallyProcessor {
           successors.remove(stackEntry.blockSample);
         }
 
-        for (BasicBlock successor : successors) {
+        for (BasicBlock successor : sortedBlocks(successors)) {
           if (graph.getLast() != successor) { // FIXME: why?
             mapNext.put(blockSample.id + "#" + successor.id, new BasicBlock[]{blockSample, successor, isTrueLastBlock ? successor : null});
           }
@@ -627,10 +652,10 @@ public class FinallyProcessor {
       }
     }
 
-    return new Area(startSample, setSample, getUniqueNext(graph, new HashSet<>(mapNext.values())));
+    return new Area(startSample, setSample, getUniqueNext(graph, mapNext.values()));
   }
 
-  private static BasicBlock getUniqueNext(ControlFlowGraph graph, Set<BasicBlock[]> setNext) {
+  private static BasicBlock getUniqueNext(ControlFlowGraph graph, Collection<BasicBlock[]> setNext) {
     // precondition: there is at most one true exit path in the `finally` statement
     BasicBlock next = null;
     boolean multiple = false;
@@ -719,6 +744,10 @@ public class FinallyProcessor {
 
       if ((type & 1) > 0) { // first
         if (finallyType > 0) {
+          if (seqPattern.length() == 0 || instrOldOffsetsPattern.isEmpty()) {
+            return traceFinallyComparisonRejected("cannot trim first instruction from empty pattern", pattern, sample,
+                                                  seqPattern, instrOldOffsetsPattern, seqSample, instrOldOffsetsSample);
+          }
           instrOldOffsetsPattern.remove(0);
           seqPattern.removeInstruction(0);
         }
@@ -726,11 +755,19 @@ public class FinallyProcessor {
 
       if ((type & 2) > 0) { // last
         if (finallyType == 0 || finallyType == 2) {
+          if (seqPattern.length() == 0 || instrOldOffsetsPattern.isEmpty()) {
+            return traceFinallyComparisonRejected("cannot trim last instruction from empty pattern", pattern, sample,
+                                                  seqPattern, instrOldOffsetsPattern, seqSample, instrOldOffsetsSample);
+          }
           instrOldOffsetsPattern.remove(instrOldOffsetsPattern.size() - 1);
           seqPattern.removeLast();
         }
 
         if (finallyType == 2) {
+          if (seqPattern.length() == 0 || instrOldOffsetsPattern.isEmpty()) {
+            return traceFinallyComparisonRejected("cannot trim second finally-exit instruction from empty pattern", pattern, sample,
+                                                  seqPattern, instrOldOffsetsPattern, seqSample, instrOldOffsetsSample);
+          }
           instrOldOffsetsPattern.remove(instrOldOffsetsPattern.size() - 1);
           seqPattern.removeLast();
         }
@@ -755,6 +792,10 @@ public class FinallyProcessor {
       SimpleInstructionSequence seq = new SimpleInstructionSequence();
       LinkedList<Integer> oldOffsets = new LinkedList<>();
       for (int i = seqSample.length() - 1; i >= seqPattern.length(); i--) {
+        if (i >= instrOldOffsetsSample.size()) {
+          return traceFinallyComparisonRejected("sample offset missing at index " + i, pattern, sample,
+                                                seqPattern, instrOldOffsetsPattern, seqSample, instrOldOffsetsSample);
+        }
         seq.addInstruction(0, seqSample.getInstr(i), -1);
         oldOffsets.addFirst(sample.getOriginalOffset(i));
         seqSample.removeInstruction(i);
@@ -786,6 +827,25 @@ public class FinallyProcessor {
     }
 
     return true;
+  }
+
+  private static boolean traceFinallyComparisonRejected(String reason,
+                                                        BasicBlock pattern,
+                                                        BasicBlock sample,
+                                                        InstructionSequence seqPattern,
+                                                        List<Integer> instrOldOffsetsPattern,
+                                                        InstructionSequence seqSample,
+                                                        List<Integer> instrOldOffsetsSample) {
+    DecompilerContext.getLogger().writeMessage(
+      "Finally comparison rejected: " + reason +
+      " pattern=" + pattern.id +
+      " patternSeq=" + seqPattern.length() +
+      " patternOffsets=" + instrOldOffsetsPattern.size() +
+      " sample=" + sample.id +
+      " sampleSeq=" + seqSample.length() +
+      " sampleOffsets=" + instrOldOffsetsSample.size(),
+      IFernflowerLogger.Severity.TRACE);
+    return false;
   }
 
   // copy exception edges and extend protected ranges
@@ -850,10 +910,10 @@ public class FinallyProcessor {
 
     boolean isOutsideRange = false;
 
-    Set<BasicBlock> setPredecessors = new HashSet<>(start.getPredecessors());
+    Set<BasicBlock> setPredecessors = new LinkedHashSet<>(start.getPredecessors());
 
     // replace start with next
-    for (BasicBlock predecessor : setPredecessors) {
+    for (BasicBlock predecessor : sortedBlocks(setPredecessors)) {
       predecessor.replaceSuccessor(start, next);
     }
 
@@ -862,7 +922,7 @@ public class FinallyProcessor {
     Set<ExceptionRangeCFG> setCommonRemovedExceptionRanges = null;
 
     // remove all the blocks in between
-    for (BasicBlock block : setBlocks) {
+    for (BasicBlock block : sortedBlocks(setBlocks)) {
       // artificial basic blocks (those resulting from splitting) may belong to more than one area
       if (graph.getBlocks().containsKey(block.id)) {
         if (!new HashSet<>(block.getSuccessorExceptions()).containsAll(setCommonExceptionHandlers)) {
@@ -905,17 +965,76 @@ public class FinallyProcessor {
       graph.getBlocks().addWithKey(emptyBlock, emptyBlock.id);
 
       // add to ranges if necessary
-      for (ExceptionRangeCFG range : setCommonRemovedExceptionRanges) {
+      for (ExceptionRangeCFG range : sortedRanges(setCommonRemovedExceptionRanges)) {
         emptyBlock.addSuccessorException(range.getHandler());
         range.getProtectedRange().add(emptyBlock);
       }
 
       // insert between predecessors and next
       emptyBlock.addSuccessor(next);
-      for (BasicBlock predecessor : setPredecessors) {
+      for (BasicBlock predecessor : sortedBlocks(setPredecessors)) {
         predecessor.replaceSuccessor(next, emptyBlock);
       }
     }
+  }
+
+  private static Record traceFinallyInformationRejected(String reason,
+                                                        StructMethod mt,
+                                                        CatchAllStatement fstat,
+                                                        BasicBlockStatement firstBlockStatement,
+                                                        int firstCode) {
+    DecompilerContext.getLogger().writeMessage(
+      "Finally information rejected for " + describeMethod(mt) +
+      ": " + reason +
+      " handler=" + fstat.getHandler().id +
+      " firstBlock=" + firstBlockStatement.id +
+      " firstCode=" + firstCode,
+      IFernflowerLogger.Severity.TRACE);
+    return null;
+  }
+
+  private static void traceFinallyDecision(StructMethod mt, String decision, BasicBlock handler, Record information) {
+    DecompilerContext.getLogger().writeMessage(
+      "Finally decision for " + describeMethod(mt) +
+      ": " + decision +
+      " handler=" + handler.id +
+      (information == null ? "" : " firstCode=" + information.firstCode + " exits=" + describeLastBlocks(information.mapLast)),
+      IFernflowerLogger.Severity.TRACE);
+  }
+
+  private static String describeMethod(StructMethod mt) {
+    return mt == null ? "<unknown method>" : mt.getClassQualifiedName() + '.' + mt.getName() + ' ' + mt.getDescriptor();
+  }
+
+  private static String describeLastBlocks(Map<BasicBlock, Boolean> mapLast) {
+    StringBuilder result = new StringBuilder("[");
+    boolean first = true;
+    for (Entry<BasicBlock, Boolean> entry : sortedBlockEntries(mapLast)) {
+      if (!first) {
+        result.append(", ");
+      }
+      result.append(entry.getKey().id).append('=').append(entry.getValue());
+      first = false;
+    }
+    return result.append(']').toString();
+  }
+
+  private static List<BasicBlock> sortedBlocks(Collection<BasicBlock> blocks) {
+    List<BasicBlock> sorted = new ArrayList<>(blocks);
+    sorted.sort(Comparator.comparingInt(block -> block.id));
+    return sorted;
+  }
+
+  private static List<Entry<BasicBlock, Boolean>> sortedBlockEntries(Map<BasicBlock, Boolean> blocks) {
+    List<Entry<BasicBlock, Boolean>> sorted = new ArrayList<>(blocks.entrySet());
+    sorted.sort(Comparator.comparingInt(entry -> entry.getKey().id));
+    return sorted;
+  }
+
+  private static List<ExceptionRangeCFG> sortedRanges(Collection<ExceptionRangeCFG> ranges) {
+    List<ExceptionRangeCFG> sorted = new ArrayList<>(ranges);
+    sorted.sort(Comparator.comparingInt(range -> range.getHandler().id));
+    return sorted;
   }
 
   private static void removeExceptionInstructionsEx(BasicBlock block, int blockType, int finallyType) {

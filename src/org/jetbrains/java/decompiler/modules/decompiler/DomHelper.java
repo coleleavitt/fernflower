@@ -99,7 +99,12 @@ public final class DomHelper {
         Statement stsuccex = stats.getWithKey(succex.id);
 
         ExceptionRangeCFG range = graph.getExceptionRange(succex, block);
-        if (!range.isCircular()) {
+        if (range == null) {
+          DecompilerContext.getLogger().writeMessage(
+            "Skipping exception successor without range: block=" + block.id + " handler=" + succex.id,
+            IFernflowerLogger.Severity.TRACE);
+        }
+        else if (!range.isCircular()) {
           stat.addSuccessor(new StatEdge(stat, stsuccex, range.getExceptionTypes()));
         }
       }
@@ -215,9 +220,21 @@ public final class DomHelper {
 
     RootStatement root = graphToStatement(graph);
 
-    if (!processStatement(root, new LinkedHashMap<>())) {
-      DotExporter.toDotFile(graph, mt, "parseGraphFail", true);
-      throw new RuntimeException("parsing failure!");
+    try {
+      if (!processStatement(root, new LinkedHashMap<>())) {
+        DotExporter.toDotFile(graph, mt, "parseGraphFail", true);
+        traceDecompositionFailure("Root statement cannot be fully decomposed for " + describeMethod(mt), root);
+        DecompilerContext.getLogger().writeMessage(
+          "Continuing with partially decomposed statement graph for " + describeMethod(mt),
+          IFernflowerLogger.Severity.WARN);
+      }
+    }
+    catch (RuntimeException ex) {
+      DecompilerContext.getLogger().writeMessage(
+        "Exception while decomposing statement graph for " + describeMethod(mt) + ": " + ex.getClass().getName() + ": " + ex.getMessage(),
+        IFernflowerLogger.Severity.WARN);
+      traceDecompositionFailure("Statement tree at decomposition exception for " + describeMethod(mt), root);
+      throw ex;
     }
 
     LabelHelper.lowContinueLabels(root, new LinkedHashSet<>());
@@ -332,22 +349,31 @@ public final class DomHelper {
 
     for (int mapstage = 0; mapstage < 2; mapstage++) {
 
+      int irreducibleSplits = 0;
+      int maxIrreducibleSplits = Math.min(128, Math.max(5, general.getStats().size() * 4));
       for (int reducibility = 0;
-           reducibility < 5;
-           reducibility++) { // FIXME: implement proper node splitting. For now up to 5 nodes in sequence are splitted.
+           reducibility < maxIrreducibleSplits;
+           reducibility++) {
 
         if (reducibility > 0) {
 
           // take care of irreducible control flow graphs
           if (IrreducibleCFGDeobfuscator.isStatementIrreducible(general)) {
-            if (!IrreducibleCFGDeobfuscator.splitIrreducibleNode(general)) {
-              DecompilerContext.getLogger().writeMessage("Irreducible statement cannot be decomposed!", IFernflowerLogger.Severity.ERROR);
+            if (irreducibleSplits >= maxIrreducibleSplits) {
+              DecompilerContext.getLogger().writeMessage(
+                "Irreducible statement split budget exhausted for statement " + general.id + ':' + general.type,
+                IFernflowerLogger.Severity.TRACE);
               break;
             }
+            if (!IrreducibleCFGDeobfuscator.splitIrreducibleNode(general)) {
+              DecompilerContext.getLogger().writeMessage("Irreducible statement cannot be decomposed!", IFernflowerLogger.Severity.WARN);
+              break;
+            }
+            irreducibleSplits++;
           }
           else {
             if (mapRefreshed) { // last chance lost
-              DecompilerContext.getLogger().writeMessage("Statement cannot be decomposed although reducible!", IFernflowerLogger.Severity.ERROR);
+              DecompilerContext.getLogger().writeMessage("Statement cannot be decomposed although reducible!", IFernflowerLogger.Severity.TRACE);
             }
             break;
           }
@@ -379,6 +405,7 @@ public final class DomHelper {
                 general.replaceStatement(stat, stat.getFirst());
               }
               else {
+                traceDecompositionFailure("Nested statement cannot be decomposed", stat);
                 return false;
               }
 
@@ -401,7 +428,59 @@ public final class DomHelper {
       }
     }
 
+    traceDecompositionFailure("Statement cannot be decomposed", general);
     return false;
+  }
+
+  private static void traceDecompositionFailure(String message, Statement statement) {
+    StringBuilder buffer = new StringBuilder(message)
+      .append(": ")
+      .append(statement.id)
+      .append(':')
+      .append(statement.type)
+      .append(System.lineSeparator());
+    appendStatementTree(buffer, statement, "", new HashSet<>());
+    DecompilerContext.getLogger().writeMessage(buffer.toString(), IFernflowerLogger.Severity.TRACE);
+  }
+
+  private static String describeMethod(StructMethod mt) {
+    return mt.getClassQualifiedName() + '.' + mt.getName() + ' ' + mt.getDescriptor();
+  }
+
+  private static void appendStatementTree(StringBuilder buffer, Statement statement, String indent, Set<Statement> seen) {
+    buffer.append(indent)
+      .append(statement.id)
+      .append(':')
+      .append(statement.type)
+      .append(" parent=")
+      .append(statement.getParent() == null ? "null" : statement.getParent().id)
+      .append(" first=")
+      .append(statement.getFirst() == null ? "null" : statement.getFirst().id)
+      .append(" post=")
+      .append(statement.getPost() == null ? "null" : statement.getPost().id)
+      .append(" stats=")
+      .append(statement.getStats().size())
+      .append(System.lineSeparator());
+
+    for (StatEdge edge : statement.getSuccessorEdges(EdgeType.DIRECT_ALL)) {
+      buffer.append(indent)
+        .append("  edge ")
+        .append(edge.getType())
+        .append(" -> ")
+        .append(edge.getDestination() == null ? "null" : edge.getDestination().id)
+        .append(" closure=")
+        .append(edge.closure == null ? "null" : edge.closure.id)
+        .append(System.lineSeparator());
+    }
+
+    if (!seen.add(statement)) {
+      buffer.append(indent).append("  ...already visited").append(System.lineSeparator());
+      return;
+    }
+
+    for (Statement child : statement.getStats()) {
+      appendStatementTree(buffer, child, indent + "  ", seen);
+    }
   }
 
   private static Statement findGeneralStatement(Statement stat, boolean forceall, HashMap<Integer, Set<Integer>> mapExtPost) {

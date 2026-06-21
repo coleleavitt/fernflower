@@ -4,9 +4,40 @@ public class a3 {
    private static final a<Integer, Integer> a;
    private static final String[] b;
 
-   private static int a(int param0, boolean param1) {
-      // $FF: Couldn't be decompiled
-   }
+   private static int a(int var0, boolean var1) {
+      label40:
+      label40: {
+         var3 = a7.b;
+         var10000 = var0;
+         if (!var3)
+         if (var0 < 2)
+         return 1;
+         var10000 = var1;
+         if (var10000 != 0)
+         var5 = a.a(var0);
+         var5 = null;
+         var2 = var5;
+         var6 = var2;
+         if (!var3)
+         if (var2 != null)
+         return var2;
+         var6 = a(var0 - 2, (boolean)var1) + a(var0 - 1, (boolean)var1);
+         var2 = var6;
+         return var10000;
+         label42: {
+            var10000 = var2;
+            return var10000;
+            label44:
+            label44: {
+               var10000 = var1;
+               if (var3) {
+                  return var10000;
+               }
+               a.a(var0, var2);
+               if (var1 == 0) {
+                  break label44;
+               }
+            }         }      }   }
 
    public static void main(String[] var0) throws Exception {
       boolean var2 = a7.b;

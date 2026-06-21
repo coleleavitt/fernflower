@@ -13,8 +13,23 @@ public class z<P> {
    }
 
    public List<P> a() {
-      // $FF: Couldn't be decompiled
-   }
+      label14:
+      label14: {
+         return var10000;
+         label16: {
+            var10000 = this.a;
+            return var10000;
+            label18:
+            label18: {
+               var10000 = this.a;
+               if (y.d != 0) {
+                  return var10000;
+               }
+               this.a = this.b();
+               if (var10000 != null) {
+                  break label18;
+               }
+            }         }      }   }
 
    public List<P> b() {
       return t.b(this.b);

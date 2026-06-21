@@ -17,21 +17,104 @@ public class al implements Comparable<al> {
       this.a = var1;
    }
 
-   protected static long a(Date param0, Date param1, TimeUnit param2) {
-      // $FF: Couldn't be decompiled
-   }
+   protected static long a(Date var0, Date var1, TimeUnit var2) {
+      label14:
+      label14: {
+         return var2.convert(Math.abs(var1.getTime() - var0.getTime()), TimeUnit.MILLISECONDS);
+         label16: {
+            label18:
+            label18: {
+               if (var0 != null)
+               return 0L;
+               if (var1 != null) {
+                  return var2.convert(Math.abs(var1.getTime() - var0.getTime()), TimeUnit.MILLISECONDS);
+               }
+            }         }      }   }
 
-   protected static <T> T a(List<T> param0) {
-      // $FF: Couldn't be decompiled
-   }
+   protected static <T> T a(List<T> var0) {
+      label14:
+      label14: {
+         return (T)var0.get(0);
+         label16: {
+            label18:
+            label18: {
+               if (var0 != null)
+               return null;
+               if (!var0.isEmpty()) {
+                  return (T)var0.get(0);
+               }
+            }         }      }   }
 
-   protected static <T> T b(List<T> param0) {
-      // $FF: Couldn't be decompiled
-   }
+   protected static <T> T b(List<T> var0) {
+      label14:
+      label14: {
+         return (T)var0.get(var0.size() - 1);
+         label16: {
+            label18:
+            label18: {
+               if (var0 != null)
+               return null;
+               if (!var0.isEmpty()) {
+                  return (T)var0.get(var0.size() - 1);
+               }
+            }         }      }   }
 
-   public void a(double param1) {
-      // $FF: Couldn't be decompiled
-   }
+   public void a(double var1) {
+      label57:
+      label57: {
+         var9 = an.k;
+         var10000 = var1;
+         if (!var9)
+         if (Double.isNaN(var1))
+         var10000 = 0.0;
+         var1 = var10000;
+         var3 = new Date();
+         this.d = var1;
+         this.e += var1;
+         this.b.add(new n(new Date(), var1));
+         var13 = this.b.size();
+         if (!var9)
+         if (var13 > 30)
+         this.e -= (Double)((n)a(this.b)).b();
+         this.b.remove(0);
+         var14 = this.c;
+         if (!var9)
+         var13 = ((List)var14).isEmpty();
+         if (var13 != 0)
+         this.f += var1;
+         this.c.add(new n(var3, var1));
+         if (var9)
+         int var10 = ap.c;
+         ++var10;
+         ap.c = var10;
+         var14 = b(this.c);
+         n var4 = (n)var14;
+         if (a((Date)var4.a(), var3, TimeUnit.MINUTES) >= 30L)
+         var5 = 0.0;
+         var7 = this.b.iterator();
+         if (var7.hasNext())
+         n var8 = (n)var7.next();
+         var5 += (Double)var8.b();
+         if (!var9)
+         if (var9)
+         var5 /= (double)this.b.size();
+         this.f += var5;
+         this.c.add(new n(var3, var5));
+         return;
+         label59: {
+            return;
+            label61: {
+               if (var15.size() <= 48) {
+                  return;
+               }
+               this.f -= (Double)((n)a(this.c)).b();
+               this.c.remove(0);
+               return;
+               var15 = this.c;
+               if (var9) {
+                  return;
+               }
+            }         }      }   }
 
    public ak a() {
       return this.a;
@@ -97,9 +180,35 @@ public class al implements Comparable<al> {
       return var1.toString();
    }
 
-   protected static boolean a(Object param0, Object param1) {
-      // $FF: Couldn't be decompiled
-   }
+   protected static boolean a(Object var0, Object var1) {
+      label18:
+      label18: {
+         return var10000;
+         label26: {
+            try {
+               if (var1 == null) {
+                  return false;
+               }
+
+               return var0.equals(var1);
+            } catch (a_ var2) {
+               throw var2;
+            }
+            label27:
+            label27: {
+               var10000 = false;
+               return var10000;
+               label29:
+               label29: {
+                  if (var0 != null) {
+                     break label27;
+                  }
+                  var10000 = true;
+                  return var10000;
+                  if (var1 != null) {
+                     break label29;
+                  }
+               }            }         }      }   }
 
    public int a(al var1) {
       try {

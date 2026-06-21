@@ -39,13 +39,57 @@ public class n<F, S> {
       this.b = var1;
    }
 
-   public boolean equals(Object param1) {
-      // $FF: Couldn't be decompiled
-   }
+   public boolean equals(Object var1) {
+      label22:
+      label22: {
+         if (!(var1 instanceof n))
+         return false;
+         var2 = (n)var1;
+         return var10000;
+         label25:
+         try {
+            if (var1 == null) {
+               return false;
+            }
+            break label25;
+         } catch (a_ var3) {
+            throw var3;
+         }
+         label26: {
+            var10000 = false;
+            return var10000;
+            label27:
+            label27: {
+               var10000 = true;
+               return var10000;
+               if (!this.a(this.b, var2.b())) {
+                  break label27;
+               }
+               if (!this.a(this.a, var2.a())) {
+                  break label27;
+               }
+            }         }      }   }
 
-   private boolean a(Object param1, Object param2) {
-      // $FF: Couldn't be decompiled
-   }
+   private boolean a(Object var1, Object var2) {
+      label14:
+      label14: {
+         return var10000;
+         label16: {
+            return var1.equals(var2);
+            label17: {
+               var10000 = false;
+               return var10000;
+               label19:
+               label19: {
+                  if (var1 != null) {
+                     return var1.equals(var2);
+                  }
+                  var10000 = true;
+                  return var10000;
+                  if (var2 != null) {
+                     break label19;
+                  }
+               }            }         }      }   }
 
    public String toString() {
       return this.a + d + this.b;
@@ -91,9 +135,36 @@ public class n<F, S> {
       return var1;
    }
 
-   public static <T extends n<K, V>, K, V> List<V> b(Collection<T> param0) {
-      // $FF: Couldn't be decompiled
-   }
+   public static <T extends n<K, V>, K, V> List<V> b(Collection<T> var0) {
+      label23:
+      label23: {
+         var4 = c;
+         var1 = new ArrayList(var0.size());
+         var2 = var0.iterator();
+         if (var2.hasNext())
+         var3 = (n)var2.next();
+         var10000 = var1;
+         if (!var4)
+         var1.add(var3.b());
+         if (var4)
+         var10000 = var1;
+         return var10000;
+         label25: {
+            c = var10001;
+            return var10000;
+            label27:
+            label27: {
+               var10001 = true;
+               label28:
+               label28: {
+                  if (ap.c == 0) {
+                     return var10000;
+                  }
+                  var10001 = false;
+                  if (!var4) {
+                     break label28;
+                  }
+               }            }         }      }   }
 
    public static <K, V> List<n<K, V>> a(Map<K, V> var0) {
       boolean var4 = c;

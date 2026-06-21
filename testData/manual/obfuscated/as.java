@@ -21,8 +21,23 @@ public class as extends ap {
    }
 
    public void a() {
-      // $FF: Couldn't be decompiled
-   }
+      label14:
+      label14: {
+         return;
+         label16: {
+            ++var10000.d;
+            return;
+            label18:
+            label18: {
+               if (this.d >= 9223372036854775797L) {
+                  return;
+               }
+               var10000 = this;
+               var10000 = this;
+               if (an.k) {
+                  break label18;
+               }
+            }         }      }   }
 
    public void a(long var1) {
       try {
@@ -36,8 +51,33 @@ public class as extends ap {
    }
 
    public double d() {
-      // $FF: Couldn't be decompiled
-   }
+      label21:
+      label21: {
+         var7 = an.k;
+         var1 = System.currentTimeMillis();
+         var3 = (double)this.d;
+         var5 = (double)(var1 - this.e) / (double)TimeUnit.MILLISECONDS.convert(1L, this.f);
+         return this.i;
+         label23: {
+            var10000.i = var3 / var5;
+            return this.i;
+            label25:
+            label25: {
+               label27:
+               label27: {
+                  this.d = 0L;
+                  var10000 = this;
+                  if (var7) {
+                     break label25;
+                  }
+                  this.e = var1;
+                  if (var5 == 0.0)
+                  var10000 = this;
+                  this.i = 0.0;
+                  if (!var7) {
+                     return this.i;
+                  }
+               }            }         }      }   }
 
    public double b() {
       return this.i;

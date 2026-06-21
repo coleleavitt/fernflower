@@ -8,6 +8,7 @@ import org.jetbrains.java.decompiler.code.CodeConstants;
 import org.jetbrains.java.decompiler.main.ClassesProcessor;
 import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.collectors.BytecodeMappingTracer;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 import org.jetbrains.java.decompiler.struct.StructField;
@@ -352,6 +353,12 @@ public class ConstExprent extends Exprent {
           String stringVal = value.toString();
           VarType type = new VarType(stringVal, !stringVal.startsWith("["));
           yield new TextBuffer(ExprProcessor.getCastTypeName(type, Collections.emptyList())).append(".class");
+        }
+        else if (value instanceof String stringVal) {
+          DecompilerContext.getLogger().writeMessage(
+            "Rendering string literal from mismatched object constant: constType=" + constType + " value=" + stringVal,
+            IFernflowerLogger.Severity.TRACE);
+          yield new TextBuffer(convertStringToJava(stringVal, ascii)).enclose("\"", "\"");
         }
         throw new RuntimeException("invalid constant type: " + constType);
       }

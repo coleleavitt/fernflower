@@ -1,9 +1,30 @@
 final class a8 implements ay {
    private static final String[] a;
 
-   public void a(a0 param1) {
-      // $FF: Couldn't be decompiled
-   }
+   public void a(a0 var1) {
+      label17:
+      label17: {
+         return;
+         label19: {
+            var10000.println(var10001.d(var10002));
+            return;
+            label21:
+            label21: {
+               var10000.println(var1.e(var10002).a(0.0));
+               if (var1.f(a[1])) {
+                  return;
+               }
+               var10000 = System.out;
+               var10001 = var1;
+               var10002 = a[3];
+               System.out.println(var1.d(a[0]));
+               var10000 = System.out;
+               var10001 = var1;
+               var10002 = a[2];
+               if (a7.b) {
+                  break label21;
+               }
+            }         }      }   }
 
    static {
       char[] var49;

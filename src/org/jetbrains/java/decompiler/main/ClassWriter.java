@@ -76,6 +76,12 @@ public class ClassWriter {
 
   private static void invokeProcessors(ClassNode node) {
     ClassWrapper wrapper = node.getWrapper();
+    if (wrapper == null) {
+      DecompilerContext.getLogger().writeMessage(
+        "Skipping class processors for class without wrapper: " + node.classStruct.qualifiedName,
+        IFernflowerLogger.Severity.TRACE);
+      return;
+    }
     StructClass cl = wrapper.getClassStruct();
 
     InitializerProcessor.extractInitializers(wrapper);
@@ -273,7 +279,12 @@ public class ClassWriter {
       invokeProcessors(node);
 
       ClassWrapper wrapper = node.getWrapper();
-      StructClass cl = wrapper.getClassStruct();
+      StructClass cl = wrapper == null ? node.classStruct : wrapper.getClassStruct();
+      if (wrapper == null) {
+        DecompilerContext.getLogger().writeMessage(
+          "Writing class without wrapper contents: " + cl.qualifiedName,
+          IFernflowerLogger.Severity.TRACE);
+      }
 
       DecompilerContext.getLogger().startWriteClass(cl.qualifiedName);
 
@@ -286,92 +297,94 @@ public class ClassWriter {
 
       dummy_tracer.incrementCurrentSourceLine(buffer.countLines(start_class_def));
 
-      List<StructRecordComponent> components = cl.getRecordComponents();
+      if (wrapper != null) {
+        List<StructRecordComponent> components = cl.getRecordComponents();
 
-      for (StructField fd : cl.getFields()) {
-        boolean hide = fd.isSynthetic() && DecompilerContext.getOption(IFernflowerPreferences.REMOVE_SYNTHETIC) ||
-                       wrapper.getHiddenMembers().contains(InterpreterUtil.makeUniqueKey(fd.getName(), fd.getDescriptor()));
-        if (hide) continue;
-
-        if (components != null && fd.getAccessFlags() == (CodeConstants.ACC_FINAL | CodeConstants.ACC_PRIVATE) &&
-            components.stream().anyMatch(c -> c.getName().equals(fd.getName()) && c.getDescriptor().equals(fd.getDescriptor()))) {
-          // Record component field: skip it
-          continue;
-        }
-
-        boolean isEnum = fd.hasModifier(CodeConstants.ACC_ENUM) && DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_ENUM);
-        if (isEnum) {
-          if (enumFields) {
-            buffer.append(',').appendLineSeparator();
-            dummy_tracer.incrementCurrentSourceLine();
-          }
-          enumFields = true;
-        }
-        else if (enumFields) {
-          buffer.append(';');
-          buffer.appendLineSeparator();
-          buffer.appendLineSeparator();
-          dummy_tracer.incrementCurrentSourceLine(2);
-          enumFields = false;
-        }
-
-        fieldToJava(wrapper, cl, fd, buffer, indent + 1, dummy_tracer); // FIXME: insert real tracer
-
-        hasContent = true;
-      }
-
-      if (enumFields) {
-        buffer.append(';').appendLineSeparator();
-        dummy_tracer.incrementCurrentSourceLine();
-      }
-
-      // FIXME: fields don't matter at the moment
-      startLine += buffer.countLines(start_class_def);
-
-      // methods
-      for (StructMethod mt : cl.getMethods()) {
-        boolean hide = mt.isSynthetic() && DecompilerContext.getOption(IFernflowerPreferences.REMOVE_SYNTHETIC) ||
-                       mt.hasModifier(CodeConstants.ACC_BRIDGE) && DecompilerContext.getOption(IFernflowerPreferences.REMOVE_BRIDGE) ||
-                       wrapper.getHiddenMembers().contains(InterpreterUtil.makeUniqueKey(mt.getName(), mt.getDescriptor()));
-        if (hide) continue;
-
-        int position = buffer.length();
-        int storedLine = startLine;
-        if (hasContent) {
-          buffer.appendLineSeparator();
-          startLine++;
-        }
-        BytecodeMappingTracer method_tracer = new BytecodeMappingTracer(startLine);
-        boolean methodSkipped = !methodToJava(node, mt, buffer, indent + 1, method_tracer);
-        if (!methodSkipped) {
-          hasContent = true;
-          addTracer(cl, mt, method_tracer);
-          startLine = method_tracer.getCurrentSourceLine();
-        }
-        else {
-          buffer.setLength(position);
-          startLine = storedLine;
-        }
-      }
-
-      // member classes
-      for (ClassNode inner : node.nested) {
-        if (inner.type == ClassNode.CLASS_MEMBER) {
-          StructClass innerCl = inner.classStruct;
-          boolean isSynthetic = (inner.access & CodeConstants.ACC_SYNTHETIC) != 0 || innerCl.isSynthetic();
-          boolean hide = isSynthetic && DecompilerContext.getOption(IFernflowerPreferences.REMOVE_SYNTHETIC) ||
-                         wrapper.getHiddenMembers().contains(innerCl.qualifiedName);
+        for (StructField fd : cl.getFields()) {
+          boolean hide = fd.isSynthetic() && DecompilerContext.getOption(IFernflowerPreferences.REMOVE_SYNTHETIC) ||
+                         wrapper.getHiddenMembers().contains(InterpreterUtil.makeUniqueKey(fd.getName(), fd.getDescriptor()));
           if (hide) continue;
 
+          if (components != null && fd.getAccessFlags() == (CodeConstants.ACC_FINAL | CodeConstants.ACC_PRIVATE) &&
+              components.stream().anyMatch(c -> c.getName().equals(fd.getName()) && c.getDescriptor().equals(fd.getDescriptor()))) {
+            // Record component field: skip it
+            continue;
+          }
+
+          boolean isEnum = fd.hasModifier(CodeConstants.ACC_ENUM) && DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_ENUM);
+          if (isEnum) {
+            if (enumFields) {
+              buffer.append(',').appendLineSeparator();
+              dummy_tracer.incrementCurrentSourceLine();
+            }
+            enumFields = true;
+          }
+          else if (enumFields) {
+            buffer.append(';');
+            buffer.appendLineSeparator();
+            buffer.appendLineSeparator();
+            dummy_tracer.incrementCurrentSourceLine(2);
+            enumFields = false;
+          }
+
+          fieldToJava(wrapper, cl, fd, buffer, indent + 1, dummy_tracer); // FIXME: insert real tracer
+
+          hasContent = true;
+        }
+
+        if (enumFields) {
+          buffer.append(';').appendLineSeparator();
+          dummy_tracer.incrementCurrentSourceLine();
+        }
+
+        // FIXME: fields don't matter at the moment
+        startLine += buffer.countLines(start_class_def);
+
+        // methods
+        for (StructMethod mt : cl.getMethods()) {
+          boolean hide = mt.isSynthetic() && DecompilerContext.getOption(IFernflowerPreferences.REMOVE_SYNTHETIC) ||
+                         mt.hasModifier(CodeConstants.ACC_BRIDGE) && DecompilerContext.getOption(IFernflowerPreferences.REMOVE_BRIDGE) ||
+                         wrapper.getHiddenMembers().contains(InterpreterUtil.makeUniqueKey(mt.getName(), mt.getDescriptor()));
+          if (hide) continue;
+
+          int position = buffer.length();
+          int storedLine = startLine;
           if (hasContent) {
             buffer.appendLineSeparator();
             startLine++;
           }
-          BytecodeMappingTracer class_tracer = new BytecodeMappingTracer(startLine);
-          classToJava(inner, buffer, indent + 1, class_tracer);
-          startLine = buffer.countLines();
+          BytecodeMappingTracer method_tracer = new BytecodeMappingTracer(startLine);
+          boolean methodSkipped = !methodToJava(node, mt, buffer, indent + 1, method_tracer);
+          if (!methodSkipped) {
+            hasContent = true;
+            addTracer(cl, mt, method_tracer);
+            startLine = method_tracer.getCurrentSourceLine();
+          }
+          else {
+            buffer.setLength(position);
+            startLine = storedLine;
+          }
+        }
 
-          hasContent = true;
+        // member classes
+        for (ClassNode inner : node.nested) {
+          if (inner.type == ClassNode.CLASS_MEMBER) {
+            StructClass innerCl = inner.classStruct;
+            boolean isSynthetic = (inner.access & CodeConstants.ACC_SYNTHETIC) != 0 || innerCl.isSynthetic();
+            boolean hide = isSynthetic && DecompilerContext.getOption(IFernflowerPreferences.REMOVE_SYNTHETIC) ||
+                           wrapper.getHiddenMembers().contains(innerCl.qualifiedName);
+            if (hide) continue;
+
+            if (hasContent) {
+              buffer.appendLineSeparator();
+              startLine++;
+            }
+            BytecodeMappingTracer class_tracer = new BytecodeMappingTracer(startLine);
+            classToJava(inner, buffer, indent + 1, class_tracer);
+            startLine = buffer.countLines();
+
+            hasContent = true;
+          }
         }
       }
 

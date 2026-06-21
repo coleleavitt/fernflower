@@ -8,6 +8,7 @@ import org.jetbrains.java.decompiler.main.ClassesProcessor.ClassNode;
 import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.collectors.BytecodeMappingTracer;
 import org.jetbrains.java.decompiler.main.collectors.CounterContainer;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.main.rels.MethodWrapper;
 import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.vars.CheckTypesResult;
@@ -352,7 +353,19 @@ public abstract class Exprent implements IMatchable {
       buf.enclose("(", ")");
     }
 
-    buf.prepend("(" + ExprProcessor.getCastTypeName(left, Collections.emptyList()) + ")");
+    String castTypeName;
+    try {
+      castTypeName = ExprProcessor.getCastTypeName(left, Collections.emptyList());
+    }
+    catch (RuntimeException ex) {
+      DecompilerContext.getLogger().writeMessage(
+        "Unable to write cast type; using Object fallback. type=" + left,
+        IFernflowerLogger.Severity.TRACE,
+        ex);
+      castTypeName = "Object";
+    }
+
+    buf.prepend("(" + castTypeName + ")");
   }
 
   // *****************************************************************************

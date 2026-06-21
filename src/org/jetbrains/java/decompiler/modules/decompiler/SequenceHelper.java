@@ -4,6 +4,7 @@ package org.jetbrains.java.decompiler.modules.decompiler;
 import org.jetbrains.java.decompiler.code.cfg.BasicBlock;
 import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.collectors.CounterContainer;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeDirection;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeType;
 import org.jetbrains.java.decompiler.modules.decompiler.stats.BasicBlockStatement;
@@ -213,6 +214,13 @@ public final class SequenceHelper {
           }
 
           if (found) {
+            if (sequence.getStats().size() == 1) {
+              DecompilerContext.getLogger().writeMessage(
+                "Sequence cleanup kept final empty child statement: sequence=" + sequence.id + " child=" + st.id,
+                IFernflowerLogger.Severity.TRACE);
+              found = false;
+              break;
+            }
             sequence.getStats().removeWithKey(st.id);
             break;
           }
@@ -222,6 +230,14 @@ public final class SequenceHelper {
       if (!found) {
         break;
       }
+    }
+
+    if (sequence.getStats().isEmpty()) {
+      DecompilerContext.getLogger().writeMessage(
+        "Sequence cleanup removed all child statements: sequence=" + sequence.id,
+        IFernflowerLogger.Severity.TRACE);
+      sequence.setFirst(null);
+      return;
     }
 
     sequence.setFirst(sequence.getStats().get(0));

@@ -48,7 +48,7 @@ public class GeneralStatement extends Statement {
       buf.appendIndent(indent).append("label").append(Integer.toString(id)).append(":").appendLineSeparator();
     }
 
-    buf.appendIndent(indent).append("abstract statement {").appendLineSeparator();
+    buf.appendIndent(indent).append("label").append(Integer.toString(id)).append(": {").appendLineSeparator();
     for (Statement stat : stats) {
       buf.append(stat.toJava(indent + 1, tracer));
     }

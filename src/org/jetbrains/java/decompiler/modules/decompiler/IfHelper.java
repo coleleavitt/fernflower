@@ -3,6 +3,8 @@ package org.jetbrains.java.decompiler.modules.decompiler;
 
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeDirection;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeType;
+import org.jetbrains.java.decompiler.main.DecompilerContext;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.FunctionExprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.IfExprent;
@@ -130,7 +132,7 @@ public final class IfHelper {
           IfStatement ifchild = (IfStatement)ifbranch.value;
           Statement ifinner = ifbranch.succs.get(0).value;
 
-          if (ifchild.getFirst().getExprents().isEmpty()) {
+          if (hasEmptyExprents(ifchild.getFirst(), "collapseIfIf")) {
 
             ifparent.getFirst().removeSuccessor(ifparent.getIfEdge());
             ifchild.removeSuccessor(ifchild.getAllSuccessorEdges().get(0));
@@ -200,7 +202,7 @@ public final class IfHelper {
           IfStatement ifparent = (IfStatement)rtnode.value;
           IfStatement ifchild = (IfStatement)ifbranch.value;
 
-          if (ifchild.getFirst().getExprents().isEmpty()) {
+          if (hasEmptyExprents(ifchild.getFirst(), "collapseIfElse")) {
 
             ifparent.getFirst().removeSuccessor(ifparent.getIfEdge());
             ifchild.getFirst().removeSuccessor(ifchild.getIfEdge());
@@ -256,7 +258,7 @@ public final class IfHelper {
           IfStatement secondif = (IfStatement)elsebranch.value;
           Statement parent = firstif.getParent();
 
-          if (secondif.getFirst().getExprents().isEmpty()) {
+          if (hasEmptyExprents(secondif.getFirst(), "collapseElse")) {
 
             firstif.getFirst().removeSuccessor(firstif.getIfEdge());
 
@@ -291,8 +293,10 @@ public final class IfHelper {
             statexpr
               .setCondition(new FunctionExprent(path == 1 ? FunctionExprent.FUNCTION_COR : FunctionExprent.FUNCTION_CADD, lstOperands, null));
 
-            if (secondif.getFirst().getExprents().isEmpty() &&
-                !firstif.getFirst().getExprents().isEmpty()) {
+            List<Exprent> secondExprents = secondif.getFirst().getExprents();
+            List<Exprent> firstExprents = firstif.getFirst().getExprents();
+            if (secondExprents != null && secondExprents.isEmpty() &&
+                firstExprents != null && !firstExprents.isEmpty()) {
 
               secondif.replaceStatement(secondif.getFirst(), firstif.getFirst());
             }
@@ -339,6 +343,17 @@ public final class IfHelper {
     }
 
     return false;
+  }
+
+  private static boolean hasEmptyExprents(Statement statement, String transform) {
+    List<Exprent> exprents = statement.getExprents();
+    if (exprents == null) {
+      DecompilerContext.getLogger().writeMessage(
+        "Skipping " + transform + ": statement " + statement.id + " (" + statement.type + ") has no exprent list",
+        IFernflowerLogger.Severity.TRACE);
+      return false;
+    }
+    return exprents.isEmpty();
   }
 
   private static IfNode buildGraph(IfStatement stat, boolean stsingle) {

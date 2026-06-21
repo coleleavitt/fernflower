@@ -9,6 +9,7 @@ import org.jetbrains.java.decompiler.modules.decompiler.stats.Statement.Statemen
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -19,7 +20,7 @@ public final class DecHelper {
 
     Set<Statement> all = new HashSet<>(lst);
 
-    Set<Statement> handlers = new HashSet<>();
+    Set<Statement> handlers = new LinkedHashSet<>();
     Set<Statement> intersection = null;
 
     for (Statement stat : lst) {
@@ -29,7 +30,7 @@ public final class DecHelper {
         intersection = setNew;
       }
       else {
-        HashSet<Statement> interclone = new HashSet<>(intersection);
+        Set<Statement> interclone = new LinkedHashSet<>(intersection);
         interclone.removeAll(setNew);
 
         intersection.retainAll(setNew);
@@ -187,7 +188,7 @@ public final class DecHelper {
   }
 
   public static Set<Statement> getUniquePredExceptions(Statement head) {
-    Set<Statement> setHandlers = new HashSet<>(head.getNeighbours(EdgeType.EXCEPTION, EdgeDirection.FORWARD));
+    Set<Statement> setHandlers = new LinkedHashSet<>(head.getNeighbours(EdgeType.EXCEPTION, EdgeDirection.FORWARD));
     setHandlers.removeIf(statement -> statement.getPredecessorEdges(EdgeType.EXCEPTION).size() > 1);
     return setHandlers;
   }

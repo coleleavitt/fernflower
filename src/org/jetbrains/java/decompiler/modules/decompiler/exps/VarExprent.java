@@ -200,7 +200,17 @@ public class VarExprent extends Exprent {
   }
 
   void appendDefinitionType(TextBuffer buffer) {
-    buffer.append(ExprProcessor.getCastTypeName(getDefinitionType(), Collections.emptyList()));
+    VarType definitionType = getDefinitionType();
+    try {
+      buffer.append(ExprProcessor.getCastTypeName(definitionType, Collections.emptyList()));
+    }
+    catch (RuntimeException ex) {
+      DecompilerContext.getLogger().writeMessage(
+        "Unable to write variable definition type; using Object fallback for var " + getVarVersion() + ", type=" + definitionType,
+        IFernflowerLogger.Severity.TRACE,
+        ex);
+      buffer.append("Object");
+    }
   }
 
   @Override

@@ -9,6 +9,7 @@ import org.jetbrains.java.decompiler.main.CancellationManager;
 import org.jetbrains.java.decompiler.main.ClassesProcessor;
 import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.collectors.BytecodeMappingTracer;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeType;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.ArrayExprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.AssignmentExprent;
@@ -190,7 +191,21 @@ public class ExprProcessor {
 
       BasicBlockStatement block = node.block;
       if (block != null) {
-        processBlock(block, data, cl);
+        try {
+          processBlock(block, data, cl);
+        }
+        catch (RuntimeException ex) {
+          DecompilerContext.getLogger().writeMessage(
+            "Exception while processing basic block: block=" + describeStatement(block) +
+            " directNode=" + node.id +
+            " entryPoints=" + entryPoints +
+            " expressions=" + data.getExpressions().size() +
+            " stack=" + data.getStack().size() +
+            " class=" + cl.qualifiedName +
+            " error=" + ex.getClass().getName() + ": " + ex.getMessage(),
+            IFernflowerLogger.Severity.WARN);
+          throw ex;
+        }
         block.setExprents(data.getExpressions());
       }
 
@@ -271,7 +286,16 @@ public class ExprProcessor {
 
     if (lst != null) {
       for (int i = 1; i < stat.getStats().size(); i++) {
-        map.put(flattenHelper.getMapDestinationNodes().get(stat.getStats().get(i).id)[0], lst.get(i - 1));
+        Statement handler = stat.getStats().get(i);
+        String[] destinationNodes = flattenHelper.getMapDestinationNodes().get(handler.id);
+        if (destinationNodes == null) {
+          DecompilerContext.getLogger().writeMessage(
+            "Catch handler has no flattened direct node for expr catch var: stat=" + stat.id + ':' + stat.type +
+            " handler=" + handler.id + ':' + handler.type,
+            IFernflowerLogger.Severity.TRACE);
+          continue;
+        }
+        map.put(destinationNodes[0], lst.get(i - 1));
       }
     }
 
@@ -281,11 +305,48 @@ public class ExprProcessor {
   }
 
   private static void initStatementExprEntries(Statement stat) {
-    stat.initExprents();
+    try {
+      stat.initExprents();
+    }
+    catch (RuntimeException ex) {
+      DecompilerContext.getLogger().writeMessage(
+        "Exception while initializing statement exprents: stat=" + describeStatement(stat) +
+        " first=" + describeStatement(stat.getFirst()) +
+        " firstExprents=" + describeExprents(stat.getFirst()) +
+        " parents=" + describeParents(stat) +
+        " error=" + ex.getClass().getName() + ": " + ex.getMessage(),
+        IFernflowerLogger.Severity.WARN);
+      throw ex;
+    }
 
     for (Statement st : stat.getStats()) {
       initStatementExprEntries(st);
     }
+  }
+
+  private static String describeStatement(Statement stat) {
+    return stat == null ? "null" : stat.id + ":" + stat.type + (stat.isCopied() ? ":copied" : "");
+  }
+
+  private static String describeExprents(Statement stat) {
+    if (stat == null) {
+      return "null-statement";
+    }
+    List<Exprent> exprents = stat.getExprents();
+    return exprents == null ? "null" : Integer.toString(exprents.size());
+  }
+
+  private static String describeParents(Statement stat) {
+    StringBuilder buffer = new StringBuilder();
+    Statement current = stat;
+    while (current != null) {
+      if (buffer.length() > 0) {
+        buffer.append(" <- ");
+      }
+      buffer.append(describeStatement(current));
+      current = current.getParent();
+    }
+    return buffer.toString();
   }
 
   public void processBlock(BasicBlockStatement stat, PrimitiveExpressionList data, StructClass cl) {
@@ -707,11 +768,13 @@ public class ExprProcessor {
       return sb.toString();
     }
     else if (tp == CodeConstants.TYPE_UNKNOWN) {
-      sb.append(UNKNOWN_TYPE_STRING);
+      DecompilerContext.getLogger().writeMessage("Unknown type encountered; emitting Object fallback.", IFernflowerLogger.Severity.TRACE);
+      sb.append("Object");
       return sb.toString(); // INFO: should not occur
     }
     else if (tp == CodeConstants.TYPE_NULL) {
-      sb.append(NULL_TYPE_STRING);
+      DecompilerContext.getLogger().writeMessage("Null type encountered where a type name is required; emitting Object fallback.", IFernflowerLogger.Severity.TRACE);
+      sb.append("Object");
       return sb.toString(); // INFO: should not occur
     }
     else if (tp == CodeConstants.TYPE_VOID) {
@@ -734,7 +797,10 @@ public class ExprProcessor {
         ret = buildJavaClassName(type.getValue());
       }
       if (ret == null) {
-        return UNDEFINED_TYPE_STRING; // FIXME: a warning should be logged
+        ret = buildJavaClassName(type.getValue());
+        DecompilerContext.getLogger().writeMessage(
+          "Object type could not be resolved by import collector; using binary-name fallback: " + ret,
+          IFernflowerLogger.Severity.TRACE);
       }
       List<String> nestedTypes = Arrays.asList(ret.split("\\."));
       typeAnnWriteHelpers = writeNestedClass(sb, type, nestedTypes, typeAnnWriteHelpers);

@@ -4,6 +4,7 @@ package org.jetbrains.java.decompiler.modules.decompiler.sforms;
 import org.jetbrains.java.decompiler.code.CodeConstants;
 import org.jetbrains.java.decompiler.main.CancellationManager;
 import org.jetbrains.java.decompiler.main.DecompilerContext;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.AssignmentExprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.FunctionExprent;
@@ -235,6 +236,12 @@ public class SSAConstructorSparseEx {
       VarExprent vardest = (VarExprent)expr;
       Integer varindex = vardest.getIndex();
       FastSparseSet<Integer> vers = varmap.get(varindex);
+      if (vers == null) {
+        DecompilerContext.getLogger().writeMessage(
+          "SSA variable read has no incoming version: var=" + varindex + " expr=" + expr,
+          IFernflowerLogger.Severity.TRACE);
+        return;
+      }
 
       int cardinality = vers.getCardinality();
       if (cardinality == 1) { // == 1
@@ -455,7 +462,18 @@ public class SSAConstructorSparseEx {
           map = new SFormsFastMapDirect();
           setCurrentVar(map, varindex, version);
 
-          extraVarVersions.put(dgraph.nodes.getWithKey(flatthelper.getMapDestinationNodes().get(stat.getStats().get(i).id)[0]).id, map);
+          Statement handler = stat.getStats().get(i);
+          String[] destinationNodes = flatthelper.getMapDestinationNodes().get(handler.id);
+          DirectNode node = destinationNodes == null ? null : dgraph.nodes.getWithKey(destinationNodes[0]);
+          if (node == null) {
+            DecompilerContext.getLogger().writeMessage(
+              "Catch handler has no flattened direct node for SSA catch map: stat=" + stat.id + ':' + stat.type +
+              " handler=" + handler.id + ':' + handler.type,
+              IFernflowerLogger.Severity.TRACE);
+            continue;
+          }
+
+          extraVarVersions.put(node.id, map);
         }
       }
     }

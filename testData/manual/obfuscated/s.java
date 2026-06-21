@@ -34,8 +34,76 @@ public class s {
    }
 
    protected p b() {
-      // $FF: Couldn't be decompiled
-   }
+      label45:
+      label45: {
+         var4 = d;
+         var1 = new StringBuilder(this.a);
+         var2 = this.b.entrySet().iterator();
+         if (var2.hasNext())
+         var3 = (Map.Entry)var2.next();
+         var1.append(e[4] + (String)var3.getKey() + e[3] + (String)var3.getValue());
+         if (var4 == 0)
+         if (var4 != 0)
+         var10000 = this.c;
+         if (var4 == 0)
+         if (var10000 != null)
+         var1.append(e[0]);
+         var1.append(this.c.getClass());
+         var1.append(e[2]);
+         var1.append(this.c.getMessage());
+         var10000 = this.c;
+         var8 = b(var10000);
+         this.a(e[1], var8);
+         p var9 = new p(this.a, var1.toString(), this.c, var8);
+
+         try {
+            if (ap.c != 0) {
+               ++var4;
+               d = var4;
+               return var9;
+            } else {
+               return var9;
+            }
+         } catch (a_ var5) {
+            throw var5;
+         }
+         label51:
+         label51: {
+            throw var12;
+            label55: {
+               try {
+                  r.a.severe(this.c.getMessage());
+                  break label51;
+               } catch (a_ var6) {
+                  var12 = var6;
+                  boolean var13 = false;
+                  throw var12;
+               }
+               label57:
+               label57: {
+                  label56:
+                  try {
+                     var11.c = new Exception();
+                     if (var4 == 0) {
+                        break label51;
+                     }
+                     break label56;
+                  } catch (a_ var7) {
+                     var12 = var7;
+                     boolean var10001 = false;
+                     throw var12;
+                  }
+                  label59:
+                  label59: {
+                     if (this.c != null) {
+                        break label57;
+                     }
+                     var11 = this;
+                     var11 = this;
+                     if (var4 != 0) {
+                        break label59;
+                     }
+                  }               }            }         }      }   }
 
    protected static String b(Throwable var0) {
       String var1 = "-";

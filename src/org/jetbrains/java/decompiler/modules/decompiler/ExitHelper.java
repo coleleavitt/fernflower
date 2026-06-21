@@ -4,6 +4,7 @@ package org.jetbrains.java.decompiler.modules.decompiler;
 import org.jetbrains.java.decompiler.code.cfg.BasicBlock;
 import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.collectors.CounterContainer;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeDirection;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeType;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.ExitExprent;
@@ -123,6 +124,12 @@ public final class ExitHelper {
         stat.getAllSuccessorEdges().get(0).getType() == EdgeType.BREAK &&
         stat.getLabelEdges().isEmpty()) {
       Statement parent = stat.getParent();
+      if (parent == null) {
+        DecompilerContext.getLogger().writeMessage(
+          "Cannot integrate exit edge because statement has no parent: stat=" + stat.id + ':' + stat.type,
+          IFernflowerLogger.Severity.TRACE);
+        return ret;
+      }
       if (stat != parent.getFirst() || (parent.type != StatementType.IF &&
                                         parent.type != StatementType.SWITCH)) {
 

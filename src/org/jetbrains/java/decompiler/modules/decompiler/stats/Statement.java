@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -710,7 +711,7 @@ public abstract class Statement implements IMatchable {
   }
 
   public Set<Statement> getNeighboursSet(EdgeType type, EdgeDirection direction) {
-    return new HashSet<>(getNeighbours(type, direction));
+    return new LinkedHashSet<>(getNeighbours(type, direction));
   }
 
   public List<StatEdge> getSuccessorEdges(EdgeType type) {

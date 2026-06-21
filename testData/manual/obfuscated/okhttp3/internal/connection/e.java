@@ -1,12 +1,15 @@
 package okhttp3.internal.connection;
 
+import com.xunmeng.core.log.Logger;
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.net.ConnectException;
+import java.net.ProtocolException;
 import java.net.Proxy;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownServiceException;
 import java.net.Proxy.Type;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -14,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocket;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
@@ -139,9 +143,175 @@ public final class e extends okhttp3.internal.http2.d.c implements okhttp3.j {
       var2.K();
    }
 
-   private void K(okhttp3.internal.connection.b param1) throws IOException {
-      // $FF: Couldn't be decompiled
-   }
+   private void K(okhttp3.internal.connection.b var1) throws IOException {
+      label2798: {
+         var2 = this.w.d();
+         var3 = var2.t();
+         var4 = null;
+         Object var5 = null;
+         Object var6 = null;
+         Object var7 = null;
+         var8 = null;
+         label2856:
+         label2856: {
+            label2801: {
+               label2800:
+               if (true) {
+                  break label2800;
+               }
+
+            }
+            label2866:
+            label2866: {
+               label2867:
+               label2867: {
+                  break label2866;
+                  label2868:
+                  label2868: {
+                     break label2866;
+                     label2869:
+                     label2869: {
+                        if (var5 != null) {
+                           okhttp3.internal.e.e.n().i((SSLSocket)var5);
+                           return;
+                        }
+
+                        return;
+                        label2889:
+                        label2889: {
+                           label2879:
+                           try {
+                              break label2879;
+                           } catch (Throwable var82) {
+                              break label2869;
+                           }
+
+                           label2876:
+                           try {
+                              break label2876;
+                           } catch (Throwable var81) {
+                              break label2869;
+                           }
+
+                           try {
+                              ;
+                           } catch (Throwable var78) {
+                              break label2869;
+                           }
+                           label2890:
+                           label2890: {
+                              var89 = (SSLSocket)var3.createSocket(this.x, var2.l().j(), var2.l().k(), true);
+                              if (OkHttpClient.b)
+                              var5 = var89;
+                              var91 = new okhttp3.internal.connection.h((SSLSocket)var89);
+                              var5 = var89;
+                              if (!OkHttpClient.d)
+                              var5 = var91;
+                              var10 = new StringBuilder;
+                              var10.<init>();
+                              var10.append("use SSLSocketWithCloseLock:");
+                              var10.append(var91);
+                              var10.append(", isSslSocketReflectionCallFix:");
+                              var10.append(OkHttpClient.d);
+                              Logger.i("RealConnection", var10.toString());
+                              var89 = var91;
+                              label2897: {
+                                 label2885:
+                                 try {
+                                    if (true) {
+                                       break label2897;
+                                    }
+                                    break label2885;
+                                 } catch (Throwable var83) {
+                                    break label2869;
+                                 }
+
+                                 label2873:
+                                 try {
+                                    break label2873;
+                                 } catch (Throwable var80) {
+                                    break label2869;
+                                 }
+
+                                 label2870:
+                                 try {
+                                    break label2870;
+                                 } catch (Throwable var79) {
+                                    break label2869;
+                                 }
+
+                                 try {
+                                    ;
+                                 } catch (Throwable var76) {
+                                    break label2869;
+                                 }
+                              }
+
+                              try {
+                                 ;
+                              } catch (Throwable var77) {
+                                 break label2869;
+                              }
+                              label2891:
+                              label2891: {
+                                 label2892: {
+                                    var9 = var1.a((SSLSocket)var89);
+                                    label2854:
+                                    if (var9.k()) {
+                                       okhttp3.internal.e.e.n().b((SSLSocket)var5, var2.l().j(), var2.p());
+                                       break label2854;
+                                    }
+                                    ((SSLSocket)var89).startHandshake();
+                                    var84 = ((SSLSocket)var89).getSession();
+                                    var11 = this.L(var84);
+                                    if (var11)
+                                    IOException var88 = new IOException("a valid ssl session was not established");
+                                    throw var88;
+                                    var92 = okhttp3.u.a(var84);
+                                    if (!var2.u().verify(var2.l().j(), var84))
+                                    var2.v().b(var2.l(), var92.e());
+                                    var94 = var92.e();
+                                    var86 = (String)var4;
+                                    var85 = (X509Certificate)var8;
+                                    if (var94 != null)
+                                    label2851:
+                                    if (var9.k()) {
+                                       var86 = okhttp3.internal.e.e.n().c((SSLSocket)var5);
+                                       break label2851;
+                                    }
+                                    StringBuilder var95 = new StringBuilder();
+                                    var95.append("Hostname ");
+                                    var95.append(var2.l().j());
+                                    var95.append(" not verified:\n    certificate: ");
+                                    var95.append(okhttp3.h.g(var85));
+                                    var95.append("\n    DN: ");
+                                    var95.append(var85.getSubjectDN().getName());
+                                    var95.append("\n    subjectAltNames: ");
+                                    var95.append(okhttp3.internal.g.d.c(var85));
+                                    SSLPeerUnverifiedException var93 = new SSLPeerUnverifiedException(var95.toString());
+                                    throw var93;
+                                    var85 = (X509Certificate)var8;
+                                    this.y = (Socket)var89;
+                                    this.C = okio.m.b(okio.m.k((Socket)var89));
+                                    this.D = okio.m.c(okio.m.e(this.y));
+                                    this.z = var92;
+                                    label2847:
+                                    if (var94.size() > 0) {
+                                       var85 = (X509Certificate)var92.e().get(0);
+                                       break label2847;
+                                    }
+                                    if (var86 != null)
+                                    var87 = Protocol.HTTP_1_1;
+                                    var87 = Protocol.get(var86);
+                                    this.A = var87;
+                                    label2898: {
+                                       break label2898;
+                                    }
+                                    break label2891;
+                                    label2846: {
+                                       break label2846;
+                                    }
+                                 }                              }                           }                        }                     }                  }               }            }         }      }   }
 
    private boolean L(SSLSession var1) {
       boolean var2;
@@ -224,11 +394,115 @@ public final class e extends okhttp3.internal.http2.d.c implements okhttp3.j {
    }
 
    public void i() {
-      // $FF: Couldn't be decompiled
+      if (!h && Thread.holdsLock(this.b)) {
+         throw new AssertionError();
+      } else {
+         okhttp3.internal.connection.f var1 = this.b;
+         synchronized(var1) {
+            this.c = true;
+         }
+      }
    }
 
-   public void j(int param1, int param2, int param3, int param4, boolean param5, okhttp3.f param6, okhttp3.r param7) {
-      // $FF: Couldn't be decompiled
+   public void j(int var1, int var2, int var3, int var4, boolean var5, okhttp3.f var6, okhttp3.r var7) {
+      if (this.A != null) {
+         IllegalStateException var22 = new IllegalStateException("already connected");
+         throw var22;
+      } else {
+         List var8 = this.w.d().q();
+         okhttp3.internal.connection.b var9 = new okhttp3.internal.connection.b(var8);
+         if (this.w.d().t() == null) {
+            if (!var8.contains(okhttp3.l.d)) {
+               throw new RouteException(new UnknownServiceException("CLEARTEXT communication not enabled for client"));
+            }
+
+            String var24 = this.w.d().l().j();
+            if (!okhttp3.internal.e.e.n().g(var24)) {
+               StringBuilder var21 = new StringBuilder();
+               var21.append("CLEARTEXT communication to ");
+               var21.append(var24);
+               var21.append(" not permitted by network security policy");
+               throw new RouteException(new UnknownServiceException(var21.toString()));
+            }
+         } else if (this.w.d().p().contains(Protocol.H2_PRIOR_KNOWLEDGE)) {
+            throw new RouteException(new UnknownServiceException("H2_PRIOR_KNOWLEDGE cannot be used with HTTPS"));
+         }
+
+         RouteException var10 = null;
+
+         while(true) {
+            label182: {
+               label181: {
+                  label180: {
+                     try {
+                        if (this.w.g()) {
+                           this.G(var1, var2, var3, var6, var7);
+                           var26 = this.x;
+                           break label180;
+                        }
+                     } catch (IOException var20) {
+                        var25 = var20;
+                        break label182;
+                     }
+
+                     try {
+                        this.H(var1, var2, var6, var7);
+                        break label181;
+                     } catch (IOException var19) {
+                        var25 = var19;
+                        break label182;
+                     }
+                  }
+
+                  if (var26 == null) {
+                     break;
+                  }
+               }
+
+               try {
+                  this.I(var9, var4, var6, var7);
+                  var7.g(var6, this.w.f(), this.w.e(), this.A);
+                  OkHttpClient.a.g(var6, this.w.f(), this.w.e(), this.A);
+                  break;
+               } catch (IOException var18) {
+                  var25 = var18;
+               }
+            }
+
+            okhttp3.internal.c.m(this.y);
+            okhttp3.internal.c.m(this.x);
+            this.y = null;
+            this.x = null;
+            this.C = null;
+            this.D = null;
+            this.z = null;
+            this.A = null;
+            this.B = null;
+            var7.h(var6, this.w.f(), this.w.e(), (Protocol)null, var25);
+            OkHttpClient.a.h(var6, this.w.f(), this.w.e(), (Protocol)null, var25);
+            if (var10 == null) {
+               var10 = new RouteException(var25);
+            } else {
+               var10.addConnectException(var25);
+            }
+
+            if (!var5 || !var9.b(var25)) {
+               throw var10;
+            }
+         }
+
+         if (this.w.g() && this.x == null) {
+            throw new RouteException(new ProtocolException("Too many tunnel connections attempted: 21"));
+         } else {
+            if (this.B != null) {
+               okhttp3.internal.connection.f var23 = this.b;
+               synchronized(var23) {
+                  this.F = this.B.x();
+               }
+            }
+
+         }
+      }
    }
 
    boolean k(okhttp3.a var1, List<okhttp3.ai> var2) {
@@ -378,8 +652,11 @@ public final class e extends okhttp3.internal.http2.d.c implements okhttp3.j {
       var1.r(ErrorCode.REFUSED_STREAM, (IOException)null);
    }
 
-   public void r(okhttp3.internal.http2.d param1) {
-      // $FF: Couldn't be decompiled
+   public void r(okhttp3.internal.http2.d var1) {
+      okhttp3.internal.connection.f var2 = this.b;
+      synchronized(var2) {
+         this.F = var1.x();
+      }
    }
 
    public okhttp3.u s() {

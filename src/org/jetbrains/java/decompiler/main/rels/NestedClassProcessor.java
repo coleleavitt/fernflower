@@ -891,6 +891,13 @@ public class NestedClassProcessor {
     List<Exprent> lst = new ArrayList<>();
     Statement retStat = null;
 
+    if (stat == null) {
+      DecompilerContext.getLogger().writeMessage(
+        "Local class definition search reached a missing statement for " + classType,
+        IFernflowerLogger.Severity.TRACE);
+      return null;
+    }
+
     if (stat.getExprents() == null) {
       int counter = 0;
 

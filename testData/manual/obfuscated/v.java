@@ -17,9 +17,81 @@ public class v {
       }
    }
 
-   private static void a(Object param0, Class<?> param1) {
-      // $FF: Couldn't be decompiled
-   }
+   private static void a(Object var0, Class<?> var1) {
+      label43:
+      label43: {
+         var6 = y.d;
+         var10000 = Object.class;
+         if (var6 == 0)
+         if (Object.class.equals(var1))
+         return;
+         var10000 = var1;
+         var2 = var10000.getDeclaredFields();
+         var3 = var2.length;
+         var4 = 0;
+         a(var10, var10001);
+         return;
+         label45:
+         label45: {
+            if (var4 < var3)
+            var10 = var0;
+            var10001 = var1.getSuperclass();
+            var5 = var2[var4];
+            ++var4;
+            if (var6 == 0) {
+               continue label45;
+            }
+            label48:
+            label48: {
+               a(var12, var13);
+               label52:
+               label52: {
+                  try {
+                     label50: {
+                        if (!var11) {
+                           break label48;
+                        }
+
+                        var12 = var5;
+                        var13 = var0;
+                        break label50;
+                     }
+                  } catch (IllegalArgumentException var7) {
+                     throw var7;
+                  }
+                  label56:
+                  label56: {
+                     try {
+                        label54: {
+                           var12 = var5;
+                           var13 = x.class;
+                           if (var6 != 0) {
+                              break label52;
+                           }
+
+                           var11 = var5.isAnnotationPresent(x.class);
+                           break label54;
+                        }
+                     } catch (IllegalArgumentException var8) {
+                        throw var8;
+                     }
+                     label58:
+                     label58: {
+                        var5.setAccessible(true);
+                        var10 = var5;
+                        var10001 = w.class;
+                        if (var6 != 0) {
+                           break label45;
+                        }
+                        var11 = var5.isAnnotationPresent(w.class);
+                        if (var6 != 0) {
+                           break label56;
+                        }
+                        b(var5, var0);
+                        if (!var11) {
+                           break label58;
+                        }
+                     }                  }               }            }         }      }   }
 
    private static void a(Field var0, Object var1) {
       int var3 = y.d;

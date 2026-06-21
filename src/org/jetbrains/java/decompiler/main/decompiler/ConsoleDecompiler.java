@@ -118,6 +118,7 @@ public class ConsoleDecompiler implements IBytecodeProvider, IResultSaver {
 
   private final File root;
   private final Fernflower engine;
+  private final Map<String, ZipFile> mapInputArchives = new HashMap<>();
   private final Map<String, ZipOutputStream> mapArchiveStreams = new HashMap<>();
   private final Map<String, Set<String>> mapArchiveEntries = new HashMap<>();
 
@@ -148,8 +149,23 @@ public class ConsoleDecompiler implements IBytecodeProvider, IResultSaver {
       engine.decompileContext();
     }
     finally {
+      close();
       engine.clearContext();
     }
+  }
+
+  public void close() {
+    for (ZipFile archive : mapInputArchives.values()) {
+      try {
+        archive.close();
+      }
+      catch (IOException ex) {
+        if (DecompilerContext.getCurrentContext() != null) {
+          DecompilerContext.getLogger().writeMessage("Cannot close input archive " + archive.getName(), IFernflowerLogger.Severity.WARN, ex);
+        }
+      }
+    }
+    mapInputArchives.clear();
   }
 
   // *******************************************************************
@@ -158,17 +174,44 @@ public class ConsoleDecompiler implements IBytecodeProvider, IResultSaver {
 
   @Override
   public byte[] getBytecode(String externalPath, String internalPath) throws IOException {
-    File file = new File(externalPath);
-    if (internalPath == null) {
-      return InterpreterUtil.getBytes(file);
-    }
-    else {
-      try (ZipFile archive = new ZipFile(file)) {
+    try {
+      File file = new File(externalPath);
+      if (internalPath == null) {
+        return InterpreterUtil.getBytes(file);
+      }
+      else {
+        ZipFile archive = getInputArchive(file);
         ZipEntry entry = archive.getEntry(internalPath);
         if (entry == null) throw new IOException("Entry not found: " + internalPath);
         return InterpreterUtil.getBytes(archive, entry);
       }
     }
+    catch (IOException ex) {
+      if (DecompilerContext.getCurrentContext() != null) {
+        DecompilerContext.getLogger().writeMessage(
+          "Cannot read bytecode: source=" + externalPath + " entry=" + internalPath,
+          IFernflowerLogger.Severity.WARN,
+          ex);
+      }
+      throw ex;
+    }
+  }
+
+  private ZipFile getInputArchive(File file) throws IOException {
+    String path = file.getCanonicalPath();
+    ZipFile archive = mapInputArchives.get(path);
+    if (archive == null) {
+      if (DecompilerContext.getCurrentContext() != null) {
+        DecompilerContext.getLogger().writeMessage("Opening input archive " + path, IFernflowerLogger.Severity.TRACE);
+      }
+      archive = openArchive(file);
+      mapInputArchives.put(path, archive);
+    }
+    return archive;
+  }
+
+  protected ZipFile openArchive(File file) throws IOException {
+    return new ZipFile(file);
   }
 
   // *******************************************************************
@@ -246,7 +289,8 @@ public class ConsoleDecompiler implements IBytecodeProvider, IResultSaver {
       return;
     }
 
-    try (ZipFile srcArchive = new ZipFile(new File(source))) {
+    try {
+      ZipFile srcArchive = getInputArchive(new File(source));
       ZipEntry entry = srcArchive.getEntry(entryName);
       if (entry != null) {
         try (InputStream in = srcArchive.getInputStream(entry)) {
@@ -304,7 +348,10 @@ public class ConsoleDecompiler implements IBytecodeProvider, IResultSaver {
     String file = new File(getAbsolutePath(path), archiveName).getPath();
     try {
       mapArchiveEntries.remove(file);
-      mapArchiveStreams.remove(file).close();
+      ZipOutputStream stream = mapArchiveStreams.remove(file);
+      if (stream != null) {
+        stream.close();
+      }
     }
     catch (IOException ex) {
       DecompilerContext.getLogger().writeMessage("Cannot close " + file, IFernflowerLogger.Severity.WARN);

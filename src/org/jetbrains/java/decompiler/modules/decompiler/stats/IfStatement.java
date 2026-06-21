@@ -1,16 +1,20 @@
 // Copyright 2000-2024 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.jetbrains.java.decompiler.modules.decompiler.stats;
 
+import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.collectors.BytecodeMappingTracer;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.modules.decompiler.DecHelper;
 import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeType;
+import org.jetbrains.java.decompiler.modules.decompiler.exps.ConstExprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.IfExprent;
 import org.jetbrains.java.decompiler.struct.match.IMatchable;
 import org.jetbrains.java.decompiler.struct.match.MatchEngine;
 import org.jetbrains.java.decompiler.struct.match.MatchNode;
+import org.jetbrains.java.decompiler.util.ListStack;
 import org.jetbrains.java.decompiler.util.StartEndPair;
 import org.jetbrains.java.decompiler.util.TextBuffer;
 import org.jetbrains.java.decompiler.util.TextUtil;
@@ -201,7 +205,7 @@ public final class IfStatement extends Statement {
       tracer.incrementCurrentSourceLine();
     }
 
-    buf.appendIndent(indent).append(headexprent.get(0).toJava(indent, tracer)).append(" {").appendLineSeparator();
+    buf.appendIndent(indent).append(getHeadexprent().toJava(indent, tracer)).append(" {").appendLineSeparator();
     tracer.incrementCurrentSourceLine();
 
     if (ifstat == null) {
@@ -233,11 +237,29 @@ public final class IfStatement extends Statement {
     boolean elseif = false;
 
     if (elsestat != null) {
-      if (elsestat.type == StatementType.IF
-          && elsestat.varDefinitions.isEmpty() && elsestat.getFirst().getExprents().isEmpty() &&
-          !elsestat.isLabeled() &&
-          (elsestat.getSuccessorEdges(EdgeType.DIRECT_ALL).isEmpty()
-           || !elsestat.getSuccessorEdges(EdgeType.DIRECT_ALL).get(0).explicit)) { // else if
+      boolean elseIfCandidate = false;
+      if (elsestat.type == StatementType.IF && elsestat.varDefinitions.isEmpty()) {
+        Statement elseFirst = elsestat.getFirst();
+        if (elseFirst == null) {
+          DecompilerContext.getLogger().writeMessage(
+            "Writing recovered if statement " + id + " as block else: else-if candidate " + elsestat.id + " has no first child",
+            IFernflowerLogger.Severity.TRACE);
+        }
+        else {
+          List<Exprent> elseFirstExprents = elseFirst.getExprents();
+          if (elseFirstExprents == null) {
+            DecompilerContext.getLogger().writeMessage(
+              "Writing recovered if statement " + id + " as block else: else-if candidate " + elsestat.id + " has no exprent list",
+              IFernflowerLogger.Severity.TRACE);
+          }
+          elseIfCandidate = elseFirstExprents != null && elseFirstExprents.isEmpty() &&
+            !elsestat.isLabeled() &&
+            (elsestat.getSuccessorEdges(EdgeType.DIRECT_ALL).isEmpty()
+             || !elsestat.getSuccessorEdges(EdgeType.DIRECT_ALL).get(0).explicit);
+        }
+      }
+
+      if (elseIfCandidate) { // else if
         buf.appendIndent(indent).append("} else ");
 
         TextBuffer content = ExprProcessor.jmpWrapper(elsestat, indent, false, tracer);
@@ -246,7 +268,7 @@ public final class IfStatement extends Statement {
 
         elseif = true;
       }
-      else {
+      else if (!(elsestat.type == StatementType.IF && elsestat.getFirst() == null)) {
         BytecodeMappingTracer else_tracer = new BytecodeMappingTracer(tracer.getCurrentSourceLine() + 1);
         TextBuffer content = ExprProcessor.jmpWrapper(elsestat, indent + 1, false, else_tracer);
 
@@ -272,7 +294,17 @@ public final class IfStatement extends Statement {
   @Override
   public void initExprents() {
 
-    IfExprent ifexpr = (IfExprent)first.getExprents().remove(first.getExprents().size() - 1);
+    List<Exprent> exprents = first.getExprents();
+    if (exprents == null || exprents.isEmpty()) {
+      DecompilerContext.getLogger().writeMessage(
+        "Unable to initialize if condition exprent: stat=" + id + ':' + type +
+        " first=" + first.id + ':' + first.type,
+        IFernflowerLogger.Severity.TRACE);
+      headexprent.set(0, unavailableConditionExprent());
+      return;
+    }
+
+    IfExprent ifexpr = (IfExprent)exprents.remove(exprents.size() - 1);
 
     if (negated) {
       ifexpr = (IfExprent)ifexpr.copy();
@@ -286,7 +318,10 @@ public final class IfStatement extends Statement {
   public List<IMatchable> getSequentialObjects() {
 
     List<IMatchable> lst = new ArrayList<>(stats);
-    lst.add(1, headexprent.get(0));
+    Exprent condition = headexprent.get(0);
+    if (condition != null) {
+      lst.add(1, condition);
+    }
 
     return lst;
   }
@@ -391,7 +426,18 @@ public final class IfStatement extends Statement {
   }
 
   public IfExprent getHeadexprent() {
-    return (IfExprent)headexprent.get(0);
+    IfExprent exprent = (IfExprent)headexprent.get(0);
+    if (exprent == null) {
+      exprent = unavailableConditionExprent();
+      headexprent.set(0, exprent);
+    }
+    return exprent;
+  }
+
+  private static IfExprent unavailableConditionExprent() {
+    ListStack<Exprent> stack = new ListStack<>();
+    stack.push(new ConstExprent(1, true, null));
+    return new IfExprent(IfExprent.IF_VALUE, stack, null);
   }
 
   public void setElseEdge(StatEdge elseedge) {

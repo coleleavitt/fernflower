@@ -5,9 +5,36 @@ import java.util.List;
 public class ab implements u {
    private List<Object> a = new ArrayList();
 
-   public void a(Class<?> param1) throws Exception {
-      // $FF: Couldn't be decompiled
-   }
+   public void a(Class<?> var1) throws Exception {
+      label17:
+      label17: {
+         var7 = y.d;
+         return;
+         label25: {
+            label24: {
+               Object var2 = var10000;
+               this.a.add(var2);
+
+               for(Class var6 : ((aa)var1.getAnnotation(aa.class)).a()) {
+                  t.a(var6, var2);
+                  if (var7 != 0) {
+                     break;
+                  }
+                  continue;
+               }
+               break label24;
+            }
+            label27:
+            label27: {
+               if (!var1.isAnnotationPresent(aa.class)) {
+                  return;
+               }
+               var10000 = var1.newInstance();
+               var10000 = var1;
+               if (var7 != 0) {
+                  break label27;
+               }
+            }         }      }   }
 
    public void a() throws Exception {
       int var3 = y.d;

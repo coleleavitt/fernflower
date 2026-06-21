@@ -112,6 +112,17 @@ public class ImportCollector {
     if (node != null && node.classStruct.isOwn()) {
       nestedName = node.simpleName;
 
+      // A nameless class reached by NAME lookup (e.g. Kotlin's `getstatic INSTANCE` for a
+      // lambda compiled to a singleton class, which is never reconstructed inline) has a
+      // null simpleName. Emitting it verbatim produced the bogus `null.INSTANCE`. Inline
+      // anonymous classes (`new Foo(){}`) are rendered through NewExprent, not here, so a
+      // null simpleName at this point means a by-name reference that needs a real qualifier.
+      // Fall back to the binary class name's last segment.
+      if (nestedName == null) {
+        String qn = node.classStruct.qualifiedName;
+        return qn.substring(qn.lastIndexOf('/') + 1);
+      }
+
       while (node.parent != null && node.type == ClassNode.CLASS_MEMBER) {
         //noinspection StringConcatenationInLoop
         nestedName = node.parent.simpleName + '.' + nestedName;

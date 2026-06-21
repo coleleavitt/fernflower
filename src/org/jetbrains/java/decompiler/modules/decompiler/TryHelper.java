@@ -9,6 +9,7 @@ import org.jetbrains.java.decompiler.code.cfg.ControlFlowGraph;
 import org.jetbrains.java.decompiler.code.cfg.ExceptionRangeCFG;
 import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.collectors.CounterContainer;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.AssignmentExprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.ExitExprent;
@@ -147,11 +148,23 @@ public final class TryHelper
     }
 
     Statement toCheck = finallyStat.getHandler().getFirst();
-    if (toCheck.type != Statement.StatementType.IF || ((IfStatement)toCheck).getIfstat().type != Statement.StatementType.IF) {
+    if (toCheck.type != Statement.StatementType.IF) {
       return false;
     }
 
-    toCheck = ((IfStatement)toCheck).getIfstat();
+    Statement nestedIf = ((IfStatement)toCheck).getIfstat();
+    if (nestedIf == null) {
+      DecompilerContext.getLogger().writeMessage(
+        "Skipping try-with-resource conversion: finally handler if statement " + toCheck.id + " has no if branch",
+        IFernflowerLogger.Severity.TRACE);
+      return false;
+    }
+
+    if (nestedIf.type != Statement.StatementType.IF) {
+      return false;
+    }
+
+    toCheck = nestedIf;
 
     if (((IfStatement)toCheck).getElsestat() == null) {
       return false;
@@ -512,7 +525,15 @@ public final class TryHelper
           edge.getDestination().removePredecessor(edge);
         }
 
-        for (StatEdge edge : ((IfStatement)statement).getIfstat().getAllSuccessorEdges()) {
+        Statement ifBranch = ((IfStatement)statement).getIfstat();
+        if (ifBranch == null) {
+          DecompilerContext.getLogger().writeMessage(
+            "Skipping nullable resource close removal: if statement " + statement.id + " has no if branch",
+            IFernflowerLogger.Severity.TRACE);
+          return;
+        }
+
+        for (StatEdge edge : ifBranch.getAllSuccessorEdges()) {
           edge.getDestination().removePredecessor(edge);
 
           if (edge.closure != null) {

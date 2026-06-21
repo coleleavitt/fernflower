@@ -15,10 +15,16 @@ import org.jetbrains.java.decompiler.util.TextUtil;
 
 public class BasicBlockStatement extends Statement {
   private final BasicBlock block;
+  private final BasicBlockStatement copySource;
 
   public BasicBlockStatement(BasicBlock block) {
+    this(block, null);
+  }
+
+  private BasicBlockStatement(BasicBlock block, BasicBlockStatement copySource) {
     super(StatementType.BASIC_BLOCK, block.id);
     this.block = block;
+    this.copySource = copySource;
 
     CounterContainer container = DecompilerContext.getCounterContainer();
     if (id >= container.getCounter(CounterContainer.STATEMENT_COUNTER)) {
@@ -54,11 +60,15 @@ public class BasicBlockStatement extends Statement {
       seq.addInstruction(block.getSeq().getInstr(i).clone(), -1);
     }
 
-    return new BasicBlockStatement(new BasicBlock(id, seq));
+    return new BasicBlockStatement(new BasicBlock(id, seq), this);
   }
 
   public BasicBlock getBlock() {
     return block;
+  }
+
+  public BasicBlockStatement getCopySource() {
+    return copySource;
   }
 
   @Override

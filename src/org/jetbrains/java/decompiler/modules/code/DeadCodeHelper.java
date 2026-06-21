@@ -9,6 +9,7 @@ import org.jetbrains.java.decompiler.code.cfg.BasicBlock;
 import org.jetbrains.java.decompiler.code.cfg.ControlFlowGraph;
 import org.jetbrains.java.decompiler.code.cfg.ExceptionRangeCFG;
 import org.jetbrains.java.decompiler.main.DecompilerContext;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.jetbrains.java.decompiler.modules.decompiler.FinallyProcessor;
 
@@ -250,6 +251,8 @@ public final class DeadCodeHelper {
   }
 
   public static void extendSynchronizedRangeToMonitorExit(ControlFlowGraph graph) {
+    int extensions = 0;
+    int extensionLimit = Math.max(64, graph.getBlocks().size() * 4);
     while(true) {
       boolean rangeExtended = false;
 
@@ -340,7 +343,7 @@ public final class DeadCodeHelper {
           BasicBlock newBlock = new BasicBlock(++graph.last_id, seq);
 
           // insert new block
-          for (BasicBlock block : successor.getPredecessors()) {
+          for (BasicBlock block : new ArrayList<>(successor.getPredecessors())) {
             block.replaceSuccessor(successor, newBlock);
           }
 
@@ -351,6 +354,12 @@ public final class DeadCodeHelper {
         }
 
         // copy exception edges and extend protected ranges (successor block)
+        if (successor.getPredecessors().isEmpty()) {
+          DecompilerContext.getLogger().writeMessage(
+            "Synchronized range extension stopped because successor has no predecessors: successor=" + successor.id,
+            IFernflowerLogger.Severity.TRACE);
+          return;
+        }
         BasicBlock rangeExitBlock = successor.getPredecessors().get(0);
         FinallyProcessor.copyExceptionEdges(graph, rangeExitBlock, successor);
 
@@ -362,6 +371,14 @@ public final class DeadCodeHelper {
         }
 
         rangeExtended = true;
+        extensions++;
+        if (extensions > extensionLimit) {
+          DecompilerContext.getLogger().writeMessage(
+            "Synchronized range extension stopped after " + extensions +
+            " extensions, graphBlocks=" + graph.getBlocks().size(),
+            IFernflowerLogger.Severity.TRACE);
+          return;
+        }
         break;
       }
 
